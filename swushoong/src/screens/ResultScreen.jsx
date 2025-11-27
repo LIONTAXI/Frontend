@@ -7,9 +7,9 @@ import IconLeft from '../assets/icon/icon_left.svg';
 const DUMMY_FARE = 5000;
 const DUMMY_MEMBERS = [
     { name: "임슈니 · 23 (나)", amount: 1250, isMe: true },
-    { name: "박슈니 · 23", amount: 1250, status: 'DONE', isMe: false },
-    { name: "이슈니 · 23", amount: 1250, status: 'PENDING', isMe: false },
-    { name: "김슈니 · 21", amount: 1250, status: 'PENDING', isMe: false },
+    { name: "박슈니 · 23", amount: 1250, isMe: false },
+    { name: "이슈니 · 23", amount: 1250, isMe: false },
+    { name: "김슈니 · 21", amount: 1250, isMe: false },
 ];
 const DUMMY_ACCOUNT = "슈니은행 393-401-4953";
 
@@ -18,8 +18,7 @@ const formatCurrency = (amount) => {
     return `${amount.toLocaleString()}`;
 };
 
-export default function CurrentPayScreen() {
-
+export default function ResultScreen() {
     
     // 합계 금액 계산
     const totalPayment = DUMMY_MEMBERS.reduce((sum, member) => sum + member.amount, 0);
@@ -38,7 +37,7 @@ export default function CurrentPayScreen() {
                     </button>
                 </div>
                 <p className="head-regular-20 text-center flex-grow text-black-90">
-                    정산 현황 
+                    정산 정보
                 </p>
                 <div className="w-10"></div>
             </div>
@@ -83,8 +82,10 @@ export default function CurrentPayScreen() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg mt-14 space-y-4">
-                <h3 className="head-semibold-20 text-[#000]">
+            {/* 3. 인당 지불할 금액 섹션 (노란색 배경) */}
+            <div className="bg-[#FFF4DF] px-4 py-6">
+            <div className="bg-white rounded-lg p-4 space-y-4">
+                <h3 className="head-semibold-20 text-[#000] mb-2 mt-0">
                     인당 지불할 금액
                 </h3>
 
@@ -101,35 +102,35 @@ export default function CurrentPayScreen() {
                                 </span>
                             </div>
                             
-                            <div className="flex items-center gap-3">
-                                {/* 금액 */}
-                                <span className="body-medium-14 text-black-70">
-                                    {formatCurrency(member.amount)}원
-                                </span>
-
-                                {/* ⭐ 정산 상태 버튼 (조건부 렌더링) ⭐ */}
-                                {member.isMe ? (
-                                    <div className="w-[88px] h-8"></div>
-                                ) : (
-                                    <div className={`
-                                        py-1.5 px-3 rounded 
-                                        w-[88px] h-8 flex items-center justify-center 
-                                    `}
-                                        style={{ 
-                                            backgroundColor: member.status === 'DONE' ? '#FC7E2A' : '#D6D6D6'
-                                        }}
-                                    >
-                                        <span className="body-semibold-14"
-                                                style={{ color: member.status === 'DONE' ? '#FFF' : '#444' }}>
-                                            {member.status === 'DONE' ? '정산 완료' : '미정산'}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
+                            {/* 오른쪽: 금액 */}
+                            <span className="body-medium-14 text-black-70 rounded bg-black-10 py-1.5 px-3" >
+                                {formatCurrency(member.amount)}원
+                            </span>
                         </div>
                     ))}
                 </div>
 
+                {/* 구분선 (대시드 보더) */}
+                <hr className="border-t border-dashed border-[#AAA] my-4" />
+
+                {/* 합계 및 차액 */}
+                <div className="space-y-4">
+                    {/* 합계 */}
+                    <div className="flex justify-between items-center">
+                        <span className="body-regular-16 text-black-50">합계</span>
+                        <span className="body-bold-16 text-[#FC7E2A]">
+                            {formatCurrency(totalPayment)}원
+                        </span>
+                    </div>
+                    {/* 차액 */}
+                    <div className="flex justify-between items-center">
+                        <span className="body-regular-16 text-black-50">차액</span>
+                        {/* 차액이 0이면 검은색, 아니면 주황색 등으로 표시 */}
+                        <span className={`body-bold-16 ${difference === 0 ? 'text-black-90' : 'text-red-500'}`}>
+                            {formatCurrency(difference)}원
+                        </span>
+                    </div>
+                </div>
             </div>
             
             {/* 4. 정산 요청하기 버튼 (이미지 하단 고정) */}
@@ -137,9 +138,11 @@ export default function CurrentPayScreen() {
                 <button 
                     className="w-full h-12 px-4 bg-[#FC7E2A] text-white rounded-lg body-semibold-16"
                 >
-                    미정산 동승슈니 조르기
+                    정산 요청하기
                 </button>
+            </div>
+
             </div>
         </div>
     );
-} 
+}
