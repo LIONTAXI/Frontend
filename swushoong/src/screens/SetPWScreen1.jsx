@@ -1,4 +1,4 @@
-// src/screens/JoinScreen1.jsx
+// src/screens/SetPWScreen1.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -28,7 +28,7 @@ export default function JoinScreen1() {
 
   const handleVerify = () => {
     console.log("인증하기 클릭");
-    navigate("/join2", {state: { userId}});
+    navigate("/set-pw2", {state: { userId}});
   };
 
   const handleResendCode = () => {
@@ -62,7 +62,7 @@ export default function JoinScreen1() {
   return (
     <div className="h-[700px] bg-white font-pretendard flex flex-col mt-4">
       {/* ===== 헤더 ===== */}
-      <Header title="회원가입" onBack={handleBack} />
+      <Header title="비밀번호 재설정" onBack={handleBack} />
 
       {/* ===== 메인 콘텐츠 ===== */}
       <main className="flex-1 px-4 pt-8">
