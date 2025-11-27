@@ -34,14 +34,14 @@ export default function JoinScreen2() {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    console.log("회원가입 요청", { userId, password });
-    navigate("/join3");
+    console.log("비밀번호 변경 요청", { userId, password });
+    navigate("/");
   };
 
   return (
     <div className="h-[700px] bg-white font-pretendard flex flex-col mt-4">
       {/* ===== 헤더 ===== */}
-      <Header title="회원가입" onBack={handleBack} />
+      <Header title="비밀번호 재설정" onBack={handleBack} />
 
       {/* ===== 메인 영역 ===== */}
       <main className="flex-1 px-4 pt-8 pb-6">
@@ -74,7 +74,7 @@ export default function JoinScreen2() {
 
           {/* --- 비밀번호 입력 --- */}
           <section className="flex flex-col gap-4">
-            <p className="text-head-semibold-20 text-black-90">비밀번호</p>
+            <p className="text-head-semibold-20 text-black-90">새로운 비밀번호</p>
 
             {/* 비밀번호 인풋 + 눈 아이콘 */}
             <div className="w-full bg-black-10 rounded-md px-4 h-12 flex items-center justify-between">
