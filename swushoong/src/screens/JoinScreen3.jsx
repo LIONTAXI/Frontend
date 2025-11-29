@@ -47,12 +47,12 @@ export default function JoinScreen3() {
   const idDisplay = studentId || "2021111222";      
 
   return (
-    <div className="h-[700px] bg-white font-pretendard flex flex-col mt-4">
+    <div className="min-h-screen bg-white font-pretendard flex flex-col">
       {/* ===== 헤더 ===== */}
       <Header title="2차 인증" onBack={handleBack} />
 
       {/* ===== 메인 콘텐츠 ===== */}
-      <main className="flex-1 px-4 pt-8">
+      <main className="flex-1 px-4 pt-8 pb-4">
         <section className="w-full max-w-[361px] mx-auto flex flex-col gap-6">
           {/* 타이틀 & 설명 */}
           <div className="flex flex-col gap-1">
@@ -133,12 +133,13 @@ export default function JoinScreen3() {
       </main>
 
       {/* ===== 하단 버튼 ===== */}
-      <div className="px-4 mb-4">
+      <div className="px-4 pb-6">
         <BtnLong
           label="이미지 등록"
           variant={canSubmit ? "primary" : "disabled"}
           disabled={!canSubmit}
           onClick={handleRegisterImage}
+          className="w-full"
         />
       </div>
     </div>

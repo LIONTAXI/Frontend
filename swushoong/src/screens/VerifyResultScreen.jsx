@@ -33,7 +33,7 @@ export default function VerifyResultScreen() {
   };
 
   return (
-    <div className="h-[700px] bg-white font-pretendard flex flex-col mt-4">
+    <div className="min-h-screen bg-white font-pretendard flex flex-col">
       {/* 상단 헤더 */}
       <Header title="2차 인증" onBack={handleBack} />
 
@@ -50,11 +50,12 @@ export default function VerifyResultScreen() {
       </main>
 
       {/* 하단 버튼 */}
-      <div className="px-4 mb-4">
+      <div className="px-4 pb-6">
         <BtnLong
           label={buttonLabel}
           variant="primary"
           onClick={handlePrimary}
+          className="w-full"
         />
       </div>
     </div>

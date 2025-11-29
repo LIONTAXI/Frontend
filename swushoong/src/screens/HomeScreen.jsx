@@ -86,6 +86,16 @@ export default function HomeScreen() {
     }
   };
 
+  const handleTabChange = (key) => {
+    if (key === "home") {
+      navigate("/home");      // 이미 이 화면이지만 명시적으로
+    } else if (key === "my") {
+      navigate("/my");    // 마이페이지로 이동
+    } else if (key === "chat") {
+      navigate("/chat");  // 나중에 채팅 화면 만들면 연결
+    }
+  };
+
   return (
     <div className="w-[393px] h-screen bg-white font-pretendard flex flex-col relative mx-auto overflow-hidden">
       {/* ===== 상단 헤더 ===== */}
@@ -180,7 +190,7 @@ export default function HomeScreen() {
 
       {/* ===== 탭바 ===== */}
       <div className="mt-auto">
-        <TabBar active="home" />
+        <TabBar active="home" onChange={handleTabChange} />
       </div>
     </div>
   );
