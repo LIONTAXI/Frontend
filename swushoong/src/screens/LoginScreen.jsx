@@ -36,7 +36,8 @@ export default function LoginScreen() {
   const handleLogin = () => {
     if (!canLogin) return;
     console.log("로그인 시도", { userId, password });
-    setLoginError(true);
+    // setLoginError(true);
+    navigate("/home");
   };
 
 

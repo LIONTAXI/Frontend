@@ -9,6 +9,11 @@ import VerifyResultScreen from "./screens/VerifyResultScreen";
 import ManualVerifyScreen from "./screens/ManualVerifyScreen";
 import SetPWScreen1 from "./screens/SetPWScreen1";
 import SetPWScreen2 from "./screens/SetPWScreen2";
+import HomeScreen from "./screens/HomeScreen";
+import AddTaxiScreen from "./screens/AddTaxiScreen";
+import NotificationScreen from "./screens/NotificationScreen";
+import TaxiDetailScreen from "./screens/TaxiDetailScreen";
+import JoinTexiMember from "./screens/JoinTexiMember";
 
 export default function App() {
   return (
@@ -24,6 +29,11 @@ export default function App() {
           <Route path="/manual-verify" element={<ManualVerifyScreen />} />
           <Route path="/set-pw1" element={<SetPWScreen1 />} />
           <Route path="/set-pw2" element={<SetPWScreen2 />} />
+          <Route path="/home" element={<HomeScreen />} />
+          <Route path="/add-taxi" element={<AddTaxiScreen />} />
+          <Route path="/notifications" element={<NotificationScreen />} />
+          <Route path="/taxi-detail" element={<TaxiDetailScreen />} />
+          <Route path="/join-taxi" element={<JoinTexiMember />} />
         </Routes>
       </div>
     </div>
