@@ -6,6 +6,8 @@ export default function Header({
   title = "회원가입",
   onBack,
   className = "",
+  rightIcon,         
+  onRightClick,       
 }) {
   return (
     <header
@@ -20,7 +22,7 @@ export default function Header({
         <img
           src={LeftIcon}
           alt="뒤로가기"
-          className="w-4 h-4"
+          className="w-6 h-6"
         />
       </button>
 
@@ -29,8 +31,18 @@ export default function Header({
         {title}
       </h1>
 
-      {/* 오른쪽 정렬용 더미 영역 (아이콘 넓이만큼) */}
-      <div className="w-6" />
+      {/* 오른쪽: 메뉴 아이콘이 있으면 버튼, 아니면 더미 영역 */}
+      {rightIcon ? (
+        <button
+          type="button"
+          onClick={onRightClick}
+          className="w-6 h-6 flex items-center justify-center"
+        >
+          <img src={rightIcon} alt="메뉴" className="w-6 h-6" />
+        </button>
+      ) : (
+        <div className="w-6" />
+      )}
     </header>
   );
 }

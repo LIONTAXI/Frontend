@@ -9,6 +9,14 @@ import VerifyResultScreen from "./screens/VerifyResultScreen";
 import ManualVerifyScreen from "./screens/ManualVerifyScreen";
 import SetPWScreen1 from "./screens/SetPWScreen1";
 import SetPWScreen2 from "./screens/SetPWScreen2";
+import HomeScreen from "./screens/HomeScreen";
+import AddTaxiScreen from "./screens/AddTaxiScreen";
+import NotificationScreen from "./screens/NotificationScreen";
+import TaxiDetailScreen from "./screens/TaxiDetailScreen";
+import JoinTexiMember from "./screens/JoinTexiMember";
+import MyScreen from "./screens/MyScreen";
+import BlockScreen from "./screens/BlockScreen";
+import EditProfile from "./screens/EditProfile";
 
 /* === 관리자 페이지 === */
 import AdminLoginScreen from "./screens/AdminLoginScreen";
@@ -35,10 +43,11 @@ import ReviewSwuScreen from "./screens/ReviewSwuScreen";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-white flex justify-center items-start">
+    <div className="min-h-screen w-full bg-black-10 flex justify-center items-start">
       {/* 아이폰 화면 폭 맞추기 (393px 또는 360px 원하시는 값으로 조정 가능) */}
-      <div className="w-[393px]">
+      <div className="w-[393px] bg-white">
         <Routes>
+          
           <Route path="/" element={<LoginScreen/>}/>
           <Route path="/join1" element={<JoinScreen1/>}/>
           <Route path="/join2" element={<JoinScreen2/>}/>
@@ -70,6 +79,16 @@ export default function App() {
           <Route path="/review-swu" element={<ReviewSwuScreen />} />  
           <Route path="/review" element={<ReviewScreen />} />  
           <Route path="/review-arrive" element={<ReviewArriveScreen />} />  
+
+          <Route path="/home" element={<HomeScreen />} />
+          <Route path="/add-taxi" element={<AddTaxiScreen />} />
+          <Route path="/notifications" element={<NotificationScreen />} />
+          <Route path="/taxi-detail" element={<TaxiDetailScreen />} />
+          <Route path="/join-taxi" element={<JoinTexiMember />} />
+          <Route path="/my" element={<MyScreen />} />
+          <Route path="/block" element={<BlockScreen />} />
+          <Route path="/edit-profile" element={<EditProfile />} />
+
         </Routes>
       </div>
     </div>

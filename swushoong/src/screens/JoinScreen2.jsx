@@ -39,12 +39,12 @@ export default function JoinScreen2() {
   };
 
   return (
-    <div className="h-[700px] bg-white font-pretendard flex flex-col mt-4">
+    <div className="min-h-screen bg-white font-pretendard flex flex-col">
       {/* ===== 헤더 ===== */}
       <Header title="회원가입" onBack={handleBack} />
 
       {/* ===== 메인 영역 ===== */}
-      <main className="flex-1 px-4 pt-8 pb-6">
+      <main className="flex-1 px-4 pt-8 pb-4">
         <div className="w-full max-w-[361px] mx-auto flex flex-col gap-8">
           {/* --- 아이디 영역 (인증 완료 표시) --- */}
           <section className="flex flex-col gap-4">
@@ -183,12 +183,13 @@ export default function JoinScreen2() {
       </main>
 
       {/* ===== 하단 회원가입 버튼 ===== */}
-      <div className="px-4">
+      <div className="px-4 pb-6">
         <BtnLong
           label="회원가입"
           variant={canSubmit ? "primary" : "disabled"}
           disabled={!canSubmit}
           onClick={handleSubmit}
+          className="w-full"
         />
       </div>
     </div>

@@ -15,20 +15,20 @@ export default function ChatScreen() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // 💡 1. isHost 상태 (참여자 테스트를 위해 false로 변경 가능)
+    //  isHost 상태 (참여자 테스트를 위해 false로 변경 가능)
     const [isHost, setIsHost] = useState(true); // 총대슈니 (Host)
 
-    // 💡 2. 매칭 상태 (매칭 완료 여부) ('active' | 'ended')
+    // 매칭 상태 (매칭 완료 여부) ('active' | 'ended')
     const [matchStatus, setMatchStatus] = useState('active'); 
 
-    // 💡 3. 메시지 필터링 (endMatchButton 제거)
+    //  메시지 필터링 
     const chatMessages = initialMessages.filter(msg => msg.type !== 'endMatchButton');
     const [messages, setMessages] = useState(chatMessages);
 
-    // 💡 4. 정산 상태 (정산 완료 여부) 
+    // 정산 상태 (정산 완료 여부) 
     const [isSettled, setIsSettled] = useState(false);
 
-    // 💡 [새로 추가] 정산 정보 입력 페이지로 이동했는지 여부
+    // 정산 정보 입력 페이지로 이동했는지 여부
     const [isSettlementEntered, setIsSettlementEntered] = useState(false);
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -36,17 +36,16 @@ export default function ChatScreen() {
     const wsRef = useRef(null);
     const chatContainerRef = useRef(null);
 
-    // 메뉴 열기 함수: Header2의 onMenu prop에 전달
+    // 메뉴 열기 함수
     const handleOpenMenu = () => {
         setIsMenuOpen(true);
     };
 
-    // 메뉴 닫기 함수: BottomMenu의 onClose prop에 전달
+    // 메뉴 닫기 함수
     const handleCloseMenu = () => {
         setIsMenuOpen(false);
     };
 
-    // 바텀 메뉴에 전달할 항목 정의
     // TODO: 실제 페이지 이동 로직으로 변경 필요
     const hostMenuItems = [
         { label: '시용자 목록', onClick: () => {
@@ -69,13 +68,13 @@ export default function ChatScreen() {
 
     const memberMenuItems = [
         { label: '사용자 목록', onClick: () => {
-            // navigate('/member-profile'); // 예시 경로
+            // navigate('/member-profile'); 예시 경로
         }},
     ];
 
-    // 2. 정산 정보 입력 완료 시 '정산 정보' 메뉴 항목 추가
+    // 정산 정보 입력 완료 시 '정산 정보' 메뉴 항목 추가
     if (isSettlementEntered) {
-        // '사용자 목록' 다음에 '정산 정보'를 추가합니다.
+        // '사용자 목록' 다음에 '정산 정보'를 추가
         memberMenuItems.splice(1, 0, {
              label: '정산 정보', 
              onClick: () => {
@@ -100,10 +99,9 @@ export default function ChatScreen() {
         }
     };
 
-
     // WebSocket 연결 설정
     useEffect(() => {
-        // TODO: 실제 WebSocket 서버 URL로 변경해야 합니다.
+        // TODO: 실제 WebSocket 서버 URL로 변경
         const WS_URL = "ws://localhost:8080/taxi-chat";
         
         wsRef.current = new WebSocket(WS_URL);
@@ -148,7 +146,7 @@ export default function ChatScreen() {
 
 
 
-    // 💡 정산 완료 상태를 확인하고 처리하는 useEffect
+    // 정산 완료 상태를 확인하고 처리하는 useEffect
     useEffect(() => {
         const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
 
@@ -165,7 +163,7 @@ export default function ChatScreen() {
                                 prev[prev.length - 1].text === SETTLEMENT_COMPLETE_MESSAGE;
 
             if (isDuplicate) {
-                console.log("⚠️ 시스템 메시지 중복 추가 방지됨.");
+                console.log("시스템 메시지 중복 추가 방지됨.");
                 return prev; // 중복이면 상태 변경 없이 이전 상태 반환
             }
             
@@ -175,7 +173,6 @@ export default function ChatScreen() {
                 {
                     id: Date.now(), 
                     type: 'system', 
-                    // 💡 코드를 정리하기 위해 변수를 사용
                     text: SETTLEMENT_COMPLETE_MESSAGE, 
                     timestamp: Date.now()
                 }
@@ -186,7 +183,7 @@ export default function ChatScreen() {
         }
     }, [location, navigate, setMessages]); // location.state가 변경될 때마다 실행
 
-    // 최종 정산 완료 상태(allSettled) 처리
+    // 최종 정산 완료 상태 처리
     useEffect(() => {
         if (location.state && location.state.isSettled) {
             console.log("🔥 모든 정산이 최종 완료되었습니다. isSettled 상태 업데이트.");
@@ -204,19 +201,19 @@ export default function ChatScreen() {
     const handleSendMessage = useCallback((text) => {
         const newMessage = {
             id: Date.now(),
-            side: 'right', // 내 메시지는 'right'
+            side: 'right',
             type: 'text',
-            name: '나', // TODO: 실제 사용자 이름으로 대체
-            age: '23', // TODO: 실제 사용자 나이로 대체
+            name: '나', 
+            age: '23', 
             text: text,
             time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
             timestamp: Date.now(),
         };
 
-        // 1. UI에 즉시 반영
+        // UI에 즉시 반영
         setMessages((prev) => [...prev, newMessage]);
 
-        // 2. WebSocket을 통해 서버로 전송
+        // WebSocket을 통해 서버로 전송
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             const messageToSend = JSON.stringify({
                 // TODO: 서버에서 필요한 메시지 형식으로 구성
@@ -241,31 +238,28 @@ export default function ChatScreen() {
             console.log("매칭 종료 처리 및 상태 변경");
             setMatchStatus('ended');
 
-            // 2. 알림 메시지 지연 발송 시뮬레이션 (서버 역할 흉내)
-            const DELAY_MS = 5000; // 💡 테스트 편의를 위해 5초(5000ms)로 단축 (300000ms 대신)
+            // 알림 메시지 지연 발송 시뮬레이션 (서버 역할 흉내)
+            const DELAY_MS = 5000; // 테스트 편의를 위해 5초(5000ms)로 단축 (300000ms 대신)
             console.log(`알림 메시지 발송을 ${DELAY_MS / 1000}초 지연합니다 (서버 역할 시뮬레이션)`);
             
-            // 💡 5분 지연 후 메시지를 setMessages로 추가 (WebSocket 수신 흉내)
-            // **[유지/변경]** `delayedMessageTimeout`을 `useRef`로 관리하면 '정산 정보 입력하기' 클릭 시 취소 가능
             const delayedMessageTimeout = setTimeout(() => {
                 console.log('5분 지연 후, 시스템 메시지 수신 (서버로부터의 WebSocket 수신 시뮬레이션)');
             
                 setMessages((prev) => [...prev, {
                     id: Date.now() + 1,
                     type: 'system', 
-                    // **[변경 3]** 메시지 내용을 요청하신 내용으로 변경 및 줄바꿈 처리
                     text: '목적지에 도착했다면\n총대슈니는 정산정보를 입력해 주세요', 
                     timestamp: Date.now(),
                 }]);
             }, DELAY_MS); 
 
-        } else if (isSettled && isHost) { // 💡 [추가] 최종 정산 완료 후, 방장만 '택시팟 종료하기' 클릭 시
+        } else if (isSettled && isHost) { // 최종 정산 완료 후, 방장만 '택시팟 종료하기' 클릭 시
             console.log("택시팟 최종 종료 및 채팅방 나가기 처리");
             // TODO: 최종 종료 API 호출 후, 채팅 목록 페이지로 navigate
             navigate('/review-member'); 
         } else if (matchStatus === 'ended') {
             if (isSettlementEntered) {
-                // ⭐ 이 부분을 isHost 여부에 따라 분리합니다. ⭐
+                // isHost 여부에 따라 분리
                 if (isHost) {
                     console.log("방장: 정산 현황 페이지로 이동 (정산 현황 보기)");
                     navigate('/please'); // 방장은 기존 정산 현황 경로
@@ -285,7 +279,6 @@ export default function ChatScreen() {
 
     console.log(`[DEBUG] isHost: ${isHost}, matchStatus: ${matchStatus}, isSettlementEntered: ${isSettlementEntered}, isSettled: ${isSettled}`);
 
-    // -----------------------------------------------------
     // 렌더링
     return (
         <div className="relative h-full bg-white font-pretendard flex flex-col">
@@ -315,7 +308,7 @@ export default function ChatScreen() {
                         // 날짜/시간 구분선 렌더링 (ChatBubble을 호출하지 않음)
                         const isSeparator = msg.type === 'dateSeparator' || msg.type === 'timeSeparator';
 
-                        // 💡 시스템 메시지 직접 렌더링 로직 (ChatBubble 충돌 방지)
+                        // 시스템 메시지 직접 렌더링 로직 (ChatBubble 충돌 방지)
                         const isSystem = msg.type === 'system';
 
                         return (
@@ -339,7 +332,7 @@ export default function ChatScreen() {
                                     </div>
                                 )}
 
-                                {/* 💡 시스템 메시지 직접 렌더링 */}
+                                {/* 시스템 메시지 직접 렌더링 */}
                                 {isSystem && (
                                     <div className="w-full flex justify-center my-4">
                                         <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 
@@ -353,8 +346,6 @@ export default function ChatScreen() {
                                 {!isSeparator && !isSystem && (
                                     <ChatBubble
                                         side={msg.side}
-                                        // 일반 메시지는 variant를 'text'로 명시하거나, 
-                                        // 실제 variant 값(예: 'image')이 있으면 그대로 전달합니다.
                                         variant={msg.type || 'text'} 
                                         text={msg.text}
                                         time={msg.time}
@@ -368,12 +359,12 @@ export default function ChatScreen() {
                         );
                     })}
                 
-                        {/* 스크롤 가능한 콘텐츠의 맨 아래 여백 확보 (유지) */}
+                        {/* 스크롤 가능한 콘텐츠의 맨 아래 여백 확보 */}
                         <div className="h-10"></div>
                     </div>
 
                     <div className="fixed bottom-0 z-10 w-[393px] left-1/2 -translate-x-1/2 bg-white">
-                        {/* 3a. ActionButton (고정됨) */}
+                        {/* ActionButton (고정됨) */}
                             <ActionButton 
                                 status={matchStatus} 
                                 onClick={handleEndMatch} 
@@ -382,7 +373,7 @@ export default function ChatScreen() {
                                 isSettled={isSettled}
                             />
 
-                        {/* 3b. 채팅 입력창 (고정됨) */}
+                        {/* 채팅 입력창 (고정됨) */}
                         <div className="border-t border-black-10">
                             <ChatInput onSend={handleSendMessage} onCameraClick={handleCameraClick}/> 
                         </div>
@@ -398,8 +389,8 @@ export default function ChatScreen() {
 }
 
 // -----------------------------------------------------
-// 💡 화면 구성을 위한 더미 데이터
-// 실제로는 서버에서 받아오거나 WebSocket을 통해 실시간으로 추가됩니다.
+// 더미 데이터
+// 실제로는 서버에서 받아오거나 WebSocket을 통해 실시간으로 추가될 것 
 const initialMessages = [
     { id: 1, type: 'dateSeparator', date: '2025.11.10' }, 
     { id: 2, type: 'timeSeparator', time: '19:20' }, 
