@@ -1,20 +1,19 @@
-//src/screens/TaxiMemberScreen.jsx
-//채팅_택시팟멤버_총대슈니 시점 
+//src/screens/TaxiSwuScreen.jsx
+//채팅_택시팟멤버_동승슈니 시점 
 
 import React from "react";
-import Header from "../components/Header";
 import IconOut from '../assets/icon/icon_out.svg';
+import Header from "../components/Header";
 
 // === 더미 데이터 ===
 const DUMMY_MEMBERS = [
-    { name: "임슈니 · 23 (나)", isMe: true },
-    { name: "박슈니 · 23", status: 'DONE', isMe: false },
-    { name: "이슈니 · 23", status: 'WRITING', isMe: false },
-    { name: "김슈니 · 21", status: 'WRITING', isMe: false },
+    { name: "이슈니 · 23 (나)", isMe: true },
+    { name: "박슈니 · 23", status: 'WRITING', isMe: false },
+    { name: "임슈니 · 23", status: 'WRITING', isMe: false },
+    { name: "김슈니 · 21", status: 'DONE', isMe: false },
 ];
 
-export default function TaxiMemberScreen() {
-
+export default function TaxiSwuScreen() {
     return (
         <div className="h-full bg-white font-pretendard flex flex-col"> 
             <Header title="택시팟 멤버" />
@@ -59,17 +58,11 @@ export default function TaxiMemberScreen() {
                                         </span>
                                     </div>
                                 )}
-
-                                {/* 멤버 내보내기 버튼 */}
-                                <span className="flex items-center justify-center h-8">
-                                    <button>
-                                        <img src={IconOut} alt="멤버 내보내기"/>
-                                    </button>
-                                </span>                                
                             </div>
                         </div>
                     ))}
                 </div>
+
             </div>
         </div>
     );

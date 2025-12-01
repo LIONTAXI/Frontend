@@ -9,7 +9,7 @@ export default function ReviewMemberScreen () {
     // ====== 더미 데이터 사용자 =======
     const dummyUser = { name: "박슈니", age: 23, role: "동승슈니" };
 
-    // 2. 후기 선택 항목
+    // 후기 선택 항목
     const positiveReviews = [
         "약속을 잘 지켜요", 
         "응답이 빨라요", 
@@ -18,7 +18,7 @@ export default function ReviewMemberScreen () {
         "친절해요"
     ];
 
-    // 3. 아쉬운 점 항목
+    // 아쉬운 점 항목
     const negativeReviews = [
         "약속시간을 지키지 않았어요", 
         "소통이 어려웠어요", 
@@ -26,13 +26,13 @@ export default function ReviewMemberScreen () {
         "정산이 느렸어요"
     ];
 
-    // 4. 상태 관리
+    //  상태 관리
     const [selectedPositive, setSelectedPositive] = useState([]); // 선택된 긍정 후기
     const [selectedNegative, setSelectedNegative] = useState([]); // 선택된 부정 후기
     const [showNegative, setShowNegative] = useState(false); // 부정 후기 섹션 표시 여부
     const [wouldMeetAgain, setWouldMeetAgain] = useState(null); // 다시 만나고 싶은 여부 (true: Yes, false: No, null: Not selected)
 
-    // 5. 항목 선택 핸들러 (복수 선택 가능)
+    // 항목 선택 핸들러 (복수 선택 가능)
     const handleSelectReview = (review, selectionState, setSelectionState) => {
         if (selectionState.includes(review)) {
             // 이미 선택된 항목이면 제거
@@ -43,18 +43,18 @@ export default function ReviewMemberScreen () {
         }
     };
 
-    // 6. 다시 만나고 싶은 여부 핸들러 (단일 선택)
+    // 다시 만나고 싶은 여부 핸들러 
     const handleMeetAgain = (value) => {
         setWouldMeetAgain(value);
     };
 
-    // 7. 등록 버튼 활성화 조건 계산
+    // 등록 버튼 활성화 조건 계산
     const isSubmitEnabled = useMemo(() => {
-        // 필수 조건: 긍정 후기 1개 이상, 부정 후기 1개 이상 (선택적 표시라도 선택은 필수), 다시 만나고 싶은 여부 선택
+        // 필수 조건: 긍정 후기 1개 이상, 부정 후기 1개 이상 (일단 선택은 필수), 다시 만나고 싶은 여부 선택
         return selectedPositive.length > 0 && selectedNegative.length > 0 && wouldMeetAgain !== null;
     }, [selectedPositive, selectedNegative, wouldMeetAgain]);
 
-    // 8. 긍정 후기 버튼 렌더링 함수
+    // 긍정 후기 버튼 렌더링 함수
     const renderPositiveButtons = () => (
         <div className="flex flex-wrap gap-2 mb-8">
             {positiveReviews.map((review) => {
@@ -68,9 +68,7 @@ export default function ReviewMemberScreen () {
                         border
                         
                         ${isSelected 
-                            // 선택됨: 배경색은 흰색(bg-white), 텍스트는 주황색, 테두리는 주황색(#FC7E2A)
                             ? 'bg-white text-[#FC7E2A] body-semibold-14 border-[#FC7E2A]' 
-                            // 미선택: 배경은 검은색-10, 텍스트는 검은색-70, 테두리는 검은색-20 유지
                             : 'bg-black-10 text-black-70 body-semibold-14 border-transparent' 
                         }
                     `}
@@ -82,7 +80,7 @@ export default function ReviewMemberScreen () {
         </div>
     );
 
-    // 9. 부정 후기 버튼 렌더링 함수
+    // 부정 후기 버튼 렌더링 함수
     const renderNegativeButtons = () => (
         <div className="flex flex-wrap gap-2 mt-4">
             {negativeReviews.map((review) => {
@@ -96,9 +94,7 @@ export default function ReviewMemberScreen () {
                         border
                         
                         ${isSelected 
-                            // 선택됨: 배경색은 흰색(bg-white), 텍스트는 주황색, 테두리는 주황색(#FC7E2A)
                             ? 'bg-white text-[#FC7E2A] body-semibold-14 border-[#FC7E2A]' 
-                            // 미선택: 배경은 검은색-10, 텍스트는 검은색-70, 테두리는 검은색-20 유지
                             : 'bg-black-10 text-black-70 body-semibold-14 border-transparent' 
                         }
                     `}
@@ -110,36 +106,30 @@ export default function ReviewMemberScreen () {
         </div>
     );
 
-    // 10. 다시 만나고 싶은 여부 버튼 렌더링
+    // 다시 만나고 싶은 여부 버튼 렌더링
     const renderMeetAgainButtons = () => (
         <div className="flex justify-between gap-2 mt-2 ">
-            {/* 1. 다시 만나고 싶지 않아요 (wouldMeetAgain: false, BtnNegetive 사용) */}
         <button
             onClick={() => handleMeetAgain(false)}
-            // 버튼 자체의 크기를 SVG 크기와 동일하게 설정하고 상대 위치 지정
             className="relative p-0 flex items-center justify-center flex-1"
             style={{ 
-                    height: '111px', // SVG height에 맞춤
-                    minWidth: '160px', // SVG width에 맞춤
-            }}
+                    height: '111px', 
+                    minWidth: '160px', 
+            }} 
         >
             <BtnNegetive 
                 isClicked={wouldMeetAgain === false} 
-                // 버튼의 전체 너비에 맞게 SVG 너비를 조정할 수 있습니다. 
-                // 여기서는 flex-1의 절반 너비를 차지한다고 가정하고, SVG는 그 공간에 맞춰질 것입니다.
                 width="100%" 
                 height="100%" 
             />
         </button>
-        
-        {/* 2. 다시 만나고 싶어요 (wouldMeetAgain: true, BtnPositive 사용) */}
+
         <button
             onClick={() => handleMeetAgain(true)}
-            // 버튼 자체의 크기를 SVG 크기와 동일하게 설정하고 상대 위치 지정
             className="relative p-0 flex items-center justify-center flex-1"
             style={{ 
-                    height: '111px', // SVG height에 맞춤
-                    minWidth: '160px', // SVG width에 맞춤
+                    height: '111px', 
+                    minWidth: '160px', 
             }}
         >
             <BtnPositive 
@@ -187,7 +177,7 @@ export default function ReviewMemberScreen () {
             {renderPositiveButtons()}
 
             {/* 4. 아쉬운 점 (부정) */}
-            <div className="">
+            <div className="mb-0">
                 <button 
                     onClick={() => setShowNegative(!showNegative)}
                     className="flex items-center body-semibold-16 text-black-50"
@@ -199,7 +189,7 @@ export default function ReviewMemberScreen () {
                         className={`ml-1 w-4 h-4 transition-transform duration-300 ${showNegative ? 'rotate-180' : 'rotate-0'}`}
                     />
                 </button>
-                {/* 사진 2처럼 화살표를 눌렀을 때만 보이도록 조건부 렌더링 */}
+                {/* 화살표를 눌렀을 때만 보이도록 조건부 렌더링 */}
                 {showNegative && renderNegativeButtons()}
             </div>
             
@@ -207,16 +197,16 @@ export default function ReviewMemberScreen () {
             {renderMeetAgainButtons()}
 
             
-            {/* 6. 등록 버튼 (푸터 고정 대신 페이지 하단에 배치) */}
-            <div className="mt-64 py-8"> {/* mt-auto를 사용하여 하단에 붙임 */}
+            {/* 6. 등록 버튼  */}
+            <div className="mt-64 py-8">
                 <button 
-                    onClick={() => console.log("등록 버튼 클릭")} // 실제 로직은 여기에 추가
+                    onClick={() => console.log("등록 버튼 클릭")} // ✅ 실제 로직은 여기에 추가
                     disabled={!isSubmitEnabled}
                     className={`
                         w-full h-12 px-4 rounded-lg body-semibold-16 transition-all duration-300
                         ${isSubmitEnabled 
-                            ? 'bg-[#FC7E2A] text-white' // 활성화: 주황색
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed' // 비활성화: 회색
+                            ? 'bg-[#FC7E2A] text-white' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                         }
                     `}
                 >

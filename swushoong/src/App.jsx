@@ -10,6 +10,29 @@ import ManualVerifyScreen from "./screens/ManualVerifyScreen";
 import SetPWScreen1 from "./screens/SetPWScreen1";
 import SetPWScreen2 from "./screens/SetPWScreen2";
 
+/* === 관리자 페이지 === */
+import AdminLoginScreen from "./screens/AdminLoginScreen";
+import AdminHomeScreen from "./screens/AdminHomeScreen";
+import AdminHomeBigScreen from "./screens/AdminHomeBigScreen";
+
+/* === 채팅 === */
+import ChatListScreen from "./screens/ChatListScreen";
+import ChatScreen from "./screens/ChatScreen";
+
+/* === 정산 === */
+import CountScreen from "./screens/CountScreen"; 
+import ResultScreen from "./screens/ResultScreen";
+import CurrentPayScreen from "./screens/CurrentPayScreen";
+import TaxiMemberScreen from "./screens/TexiMemberScreen";
+import TaxiSwuScreen from "./screens/TaxiSwuScreen";
+import PayMemberScreen from "./screens/PayMemberScreen";
+
+/* --- 후기 === */
+import ReviewScreen from "./screens/ReviewScreen";
+import ReviewArriveScreen from "./screens/ReviewArriveScreen";
+import ReviewMemberScreen from "./screens/ReviewMemberScreen";
+import ReviewSwuScreen from "./screens/ReviewSwuScreen";
+
 export default function App() {
   return (
     <div className="min-h-screen bg-white flex justify-center items-start">
@@ -24,6 +47,29 @@ export default function App() {
           <Route path="/manual-verify" element={<ManualVerifyScreen />} />
           <Route path="/set-pw1" element={<SetPWScreen1 />} />
           <Route path="/set-pw2" element={<SetPWScreen2 />} />
+
+          {/* === 관리자 페이지 === */}
+          <Route path="/login-admin" element={<AdminLoginScreen/>}/>
+          <Route path="/admin-home" element={<AdminHomeScreen/>}/>
+          <Route path="/admin-home-big" element={<AdminHomeBigScreen/>}/>  
+
+          {/* === 채팅 === */}
+          <Route path="/chat-list" element={<ChatListScreen/>} />
+          <Route path="/chat" element={<ChatScreen/>} />
+
+          {/* === 정산 === */}
+          <Route path="/confirm" element={<CountScreen/>} /> 
+          <Route path="/send" element={<ResultScreen/>} />
+          <Route path="/please" element={<CurrentPayScreen />} /> 
+          <Route path="/taxi-member" element={<TaxiMemberScreen/>} />
+          <Route path="/taxi-swu" element={<TaxiSwuScreen/>} />
+          <Route path="/current-pay-member" element={<PayMemberScreen />} /> 
+
+          {/* === 후기 === */}
+          <Route path="/review-member" element={<ReviewMemberScreen />} />   
+          <Route path="/review-swu" element={<ReviewSwuScreen />} />  
+          <Route path="/review" element={<ReviewScreen />} />  
+          <Route path="/review-arrive" element={<ReviewArriveScreen />} />  
         </Routes>
       </div>
     </div>

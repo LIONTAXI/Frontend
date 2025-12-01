@@ -12,7 +12,7 @@ const BtnNegetive = ({
     ...rest // 나머지 SVG 속성
 }) => {
     const selectedStyle = isClicked ? {
-        stroke: '#D6D6D6', 
+        stroke: 'rgb(119 119 119)', 
         strokeWidth: '1',  
     } : {};
 
