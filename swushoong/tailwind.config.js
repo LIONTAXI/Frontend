@@ -8,7 +8,7 @@ module.exports = {
     extend: {
       colors: {
         oryu: "rgb(234 42 17)",
-
+ 
         black: {
           10: "rgb(245 245 245)",
           15: "rgb(237 237 237)",
@@ -87,5 +87,13 @@ module.exports = {
       },
     },
   },
+
+  variants: {
+    extends: {
+      backgroundColor: ['active'],
+      textColor: ['active'],
+    },
+  },
+  
   plugins: [],
 };
