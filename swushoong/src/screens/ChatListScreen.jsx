@@ -1,9 +1,10 @@
 //src/screens/ChatLisScreen.jsx
 // 채팅목록 화면 
-import React from "react";
+import React, {useState} from "react";
+import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 
-const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon }) => {
+const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon, onClick }) => {
     const itemClasses = hasUnread 
         ? "flex items-center py-3 px-4 bg-[#FFF4DF]" // 읽지 않은 메시지 배경색
         : "flex items-center py-3 px-4 mt-4 mb-4";
@@ -19,7 +20,7 @@ const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon 
         : "text-body-regular-14 text-black-70 flex-shrink-0";
 
     return (
-        <div className={itemClasses}>
+        <div className={itemClasses} onClick={onClick}>
             {/* 아이콘 */}
             <div className="relative w-12 h-12 rounded-full bg-white border border-black-20 flex items-center justify-center mr-3">
                 <span className="text-xl">{avatarIcon}</span>
@@ -60,6 +61,29 @@ const DateDivider = ({ date }) => (
 );
 
 export default function ChatListScreen() {
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState("chat-list");
+
+    // 탭바 이동 
+    const handleTabChange = (key) => {
+        setActiveTab(key);
+        console.log(`${key} 탭으로 이동합니다.`); 
+        if (key === "home") {
+            navigate("/home");      
+        } else if (key === "my") {
+            navigate("/my");    
+        } else if (key === "chat-list") {
+            navigate("/chat-list");  
+        }
+    };
+    
+    // 채팅 화면 이동 
+    const handleChatClick = (chatId) => {
+        // 채팅 상세 화면 경로로 이동 (예: /chat/1, /chat/2)
+        navigate(`/chat/${chatId}`); 
+        console.log(`채팅 ID ${chatId} 상세 화면으로 이동합니다.`);
+    };
+    
     // ==== 더미 데이터 ==== 
     const chatData = [
         {
@@ -130,7 +154,7 @@ export default function ChatListScreen() {
             </header>
 
             {/* 채팅 목록 스크롤 영역 */}
-            <main className="flex-1 min-h-0 overflow-y-auto">
+            <main className="flex-1 min-h-0 overflow-y-auto pb-[393px]">
                 
                 {/* 현재 매칭 중인 택시팟 섹션 */}
                 {currentMatchingChats.length > 0 && (
@@ -146,6 +170,7 @@ export default function ChatListScreen() {
                                     isMatching={chat.isMatching}
                                     hasUnread={chat.hasUnread}
                                     avatarIcon={chat.avatarIcon}
+                                    onClick={() => handleChatClick(chat.id)}
                                 />
                             ))}
                         </div>
@@ -170,6 +195,7 @@ export default function ChatListScreen() {
                                         isMatching={chat.isMatching}
                                         hasUnread={chat.hasUnread}
                                         avatarIcon={chat.avatarIcon}
+                                        onClick={() => handleChatClick(chat.id)}
                                     />
                                 ))}
                             </div>
@@ -182,7 +208,10 @@ export default function ChatListScreen() {
             {/* 하단 메뉴 푸터 영역 */}
             <div className="fixed bottom-0 z-10 w-[393px] left-1/2 -translate-x-1/2 bg-white">
                     <div>
-                        <TabBar />
+                        <TabBar 
+                            active={activeTab} 
+                            onChange={handleTabChange}
+                        />
                     </div>
             </div>
         </div>

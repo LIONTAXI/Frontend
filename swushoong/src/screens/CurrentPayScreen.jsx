@@ -61,11 +61,11 @@ export default function CurrentPayScreen() {
     };
 
     return (
-        <div className="h-full bg-white font-pretendard flex flex-col"> 
+        <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidde"> 
             <Header title="정산 현황" />
 
             {/* 지불한 택시비 및 계좌 정보 */}
-            <div className="flex-col flex-grow w-full space-y-4 px-4 pb-8">
+            <div className="w-full space-y-4 px-4 pb-8">
                 {/* 지불한 택시비 */}
                 <div className="space-y-1 mb-0">
                     <p className="text-head-semibold-20 text-black-90">지불한 택시비</p>

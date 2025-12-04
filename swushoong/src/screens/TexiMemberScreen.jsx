@@ -16,7 +16,7 @@ const DUMMY_MEMBERS = [
 export default function TaxiMemberScreen() {
 
     return (
-        <div className="h-full bg-white font-pretendard flex flex-col"> 
+        <div className="h-full h-screen bg-white font-pretendard flex flex-col"> 
             <Header title="택시팟 멤버" />
 
             <div className="bg-white flex flex-col flex-grow w-full space-y-4 px-4">

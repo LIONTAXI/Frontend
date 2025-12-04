@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header2 from "../components/Header2";
+import Header from "../components/Header";
 import BottomMenu from "./components/BottomMenu";
+import MenuIcon from "../assets/icon/icon_menu.svg";
 
-// == 더미 데이터 ==
+// == 더미 데이터 == 
 const dummyProfileData = {
     nickname: "이슈니",
     age: 23,
@@ -27,6 +28,7 @@ export default function ReviewScreen() {
     const menuItems = [
         { label: '시용자 차단', onClick: () => {
             // navigate('/member-profile'); 
+            console.log("사용자 차단 클릭");
         }},
     ];
 
@@ -42,10 +44,6 @@ export default function ReviewScreen() {
         console.log("뒤로가기 클릭");
     };
 
-    const handleOpenMenu = () => {
-        console.log("메뉴 클릭");
-        setIsMenuOpen(true);
-    };
 
     // 메뉴 닫기 함수: BottomMenu의 onClose prop에 전달
     const handleCloseMenu = () => {
@@ -77,7 +75,12 @@ export default function ReviewScreen() {
     return (
         <div className="relative h-screen bg-white font-pretendard flex flex-col">
             {/* 1. 상단 헤더 */}
-            <Header2 title="프로필" onBack={handleBack} onMenu={handleOpenMenu} />
+            <Header
+                title="프로필" 
+                onBack={handleBack} 
+                rightIcon={MenuIcon} // 메뉴 아이콘 표시
+                onRightClick={() => setIsMenuOpen(true)} // 클릭 시 메뉴 열기
+            />
 
             <main className="flex-grow p-4">
                 {/* 2. 프로필 정보 섹션 */}
@@ -131,11 +134,41 @@ export default function ReviewScreen() {
                 </div>
 
             </main>
-            <BottomMenu
-                    isOpen={isMenuOpen}      // 상태 값 전달
-                    onClose={handleCloseMenu} // 닫기 함수 전달
-                    menuItems={menuItems}   // 메뉴 항목 리스트 전달
-            />
+            {isMenuOpen && (
+                <div
+                    className="absolute inset-0 z-50 flex justify-center items-end bg-black-90 bg-opacity-70"
+                    onClick={handleCloseMenu} // 외부 클릭 시 닫기
+                >
+                    <div
+                        className="w-full max-w-[393px] mx-auto bg-white rounded-t-[20px] pt-3 pb-8 relative"
+                        onClick={(e) => e.stopPropagation()} // 메뉴 내부 클릭 시 버블링 방지
+                    >
+                        {/* 상단 닫기 핸들 */}
+                        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mb-5" />
+
+                        <h2 className="px-4 text-head-semibold-20 text-black-90 mt-4 mb-4">
+                            메뉴
+                        </h2>
+
+                        <div className="flex flex-col">
+                            {/* 메뉴 항목 리스트 렌더링 */}
+                            {menuItems.map((item, index) => (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
+                                    onClick={() => {
+                                        item.onClick();
+                                        handleCloseMenu(); // 메뉴 클릭 후 닫기
+                                    }}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -185,7 +185,7 @@ export default function ReviewSwuScreen () {
             <div className="">
                 <button 
                     onClick={() => setShowNegative(!showNegative)}
-                    className="flex items-center body-semibold-16 text-black-50"
+                    className="flex items-center mt-16 text-body-semibold-16 text-black-50"
                 >
                     아쉬운 점이 있었나요?
                     <img 
@@ -198,25 +198,27 @@ export default function ReviewSwuScreen () {
                 {showNegative && renderNegativeButtons()}
             </div>
             
-            {/* 5. 다시 만나고 싶은 여부 */}
-            {renderMeetAgainButtons()}
+            <div className="fixed bottom-10 z-10 w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
+                
+                {/* 5. 다시 만나고 싶은 여부 */}
+                {renderMeetAgainButtons()}
 
-            
-            {/* 6. 등록 버튼 (푸터 고정 대신 페이지 하단에 배치) */}
-            <div className="mt-64 py-8"> 
-                <button 
-                    onClick={() => console.log("등록 버튼 클릭")} // ✅ 실제 로직은 여기에 추가
-                    disabled={!isSubmitEnabled}
-                    className={`
-                        w-full h-12 px-4 rounded-lg body-semibold-16 transition-all duration-300
-                        ${isSubmitEnabled 
-                            ? 'bg-[#FC7E2A] text-white' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                        }
-                    `}
-                >
-                    등록
-                </button>
+                {/* 6. 등록 버튼 */}
+                <div className="mt-4">
+                    <button 
+                        onClick={() => console.log("등록 버튼 클릭", { selectedPositive, selectedNegative, wouldMeetAgain })} 
+                        disabled={!isSubmitEnabled}
+                        className={`
+                            w-full h-12 px-4 rounded-lg body-semibold-16 transition-all duration-300
+                            ${isSubmitEnabled 
+                                ? 'bg-[#FC7E2A] text-white' 
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            }
+                        `}
+                    >
+                        등록
+                    </button>
+                </div>
             </div>
         </div>
     );

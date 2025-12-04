@@ -73,7 +73,7 @@ export default function ResultScreen() {
             </div>
 
             {/* 3. 인당 지불할 금액 섹션  */}
-            <div className="bg-[#FFF4DF] flex-col flex-grow w-full px-4 pt-6 pb-56">
+            <div className="bg-[#FFF4DF] w-[393px] h-screen flex-col flex-grow w-full px-4 pt-6 pb-56">
             <div className="bg-white rounded-lg p-4 space-y-4">
                 <h3 className="text-head-semibold-20 text-[#000] mb-2 mt-0">
                     인당 지불할 금액
@@ -126,7 +126,7 @@ export default function ResultScreen() {
             {/* 4. 정산 요청하기 버튼 (이미지 하단 고정) */}
             <div className="fixed bottom-10 z-10 w-full max-w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
                 <button 
-                    onClick={() => navigate("/chat", { state: { settlementCompleted: true } })}
+                    onClick={() => navigate("/chat/:chatId", { state: { settlementCompleted: true } })}
                     className="w-full h-14 p-3 bg-[#FC7E2A] text-white rounded justify-center items-center text-body-semibold-16"
                 >
                     정산 요청하기
@@ -136,4 +136,4 @@ export default function ResultScreen() {
             </div>
         </div>
     );
-}
+} 

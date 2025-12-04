@@ -1,14 +1,14 @@
 // 채팅화면에 쓰이는 매칭 정보 컴포넌트
 
 import React from "react";
-import IconPin3 from '../../assets/icon/icon_pin3.svg';
+import IconPin2 from '../../assets/icon/icon_pin2.svg';
 import IconPeople from '../../assets/icon/icon_people.svg';
 
 const MatchInfo = ({ destination, departureIcon, departure, departureTime, members, estimatedFare }) => (
-    <div className="bg-black-10 px-4 py-3 rounded border-black-10 w-full">
+    <div className="bg-black-10 px-4 py-3 rounded border-black-10 w-[361px]">
         <div className="flex items-center mb-2">
             <span className="text-xl">
-                <img src={IconPin3} alt="위치 "/>
+                <img src={IconPin2} alt="위치 "/>
             </span>
             <span className="text-body-semibold-16 text-black-90 ml-1">
                 {destination}

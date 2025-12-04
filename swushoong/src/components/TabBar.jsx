@@ -9,7 +9,7 @@ import MypageActiv from "../assets/icon/MypageActiv.svg";
 import MypageNone from "../assets/icon/MypageNone.svg";
 
 export default function TabBar({
-  active = "home",            // "home" | "chat" | "my"
+  active = "home",            // "home" | "chat-list" | "my"
   onChange = () => {},        // (key) => void
   className = "",
 }) {
@@ -21,7 +21,7 @@ export default function TabBar({
       inactiveIcon: HomeNone,
     },
     {
-      key: "chat",
+      key: "chat-list", // ✅ 경로에 맞게, chat -> chat-list로 수정 
       label: "채팅",
       activeIcon: ChatActiv,
       inactiveIcon: ChatNone,
