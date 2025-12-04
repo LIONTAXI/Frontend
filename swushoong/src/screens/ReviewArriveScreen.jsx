@@ -136,7 +136,7 @@ export default function ReviewArriveScreen() {
                     ) : (
                         <p className="text-body-semibold-14 text-black-50 py-0">
                             받은 매너 평가가 없습니다.
-                        </p>
+                        </p> 
                     )}
                 </div>
 
@@ -160,7 +160,7 @@ export default function ReviewArriveScreen() {
 
             </main>
 
-            <div className="mt-64 py-8">
+            <div className="fixed bottom-10 z-10 w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
                 <button 
                     onClick={handleButtonClick} 
                     disabled={!isSubmitEnabled}

@@ -29,10 +29,10 @@ export default function CountScreen ({ onConfirm }) {
     };
 
   return (
-    <div className="h-full bg-white font-pretendard flex flex-col">
+    <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
         <Header title="정산 정보" />
 
-        <div className="bg-white flex flex-col flex-grow w-full space-y-4 px-4">
+        <div className="bg-white flex flex-col flex-grow w-full space-y-4 px-4 py-6">
         
         {/* 지불한 택시비 입력 필드 */}
         <div className="space-y-1 mb-0">
@@ -93,7 +93,7 @@ export default function CountScreen ({ onConfirm }) {
       <div className="fixed bottom-10 z-10 w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
         <button 
             onClick={handleConfirmClick}
-            className={`w-full h-14 justify-center items-center body-semibold-16 rounded p-3 
+            className={`w-full h-14 justify-center items-center text-body-semibold-16 rounded p-3 
                 ${isButtonActive 
                     // 활성화 시
                     ? 'bg-[#FC7E2A] text-white' 

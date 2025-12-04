@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header2 from "../components/Header2";
+import Header from "../components/Header";
 import ChatBubble from "../components/ChatBubble";
 import ActionButton from "./components/ActionButton"; 
 import ChatInput from "./components/ChatInput";
 import MatchInfo from "./components/MatchInfo";
-import BottomMenu from "./components/BottomMenu";
+import MenuIcon from "../assets/icon/icon_menu.svg";
 
 
 // --- 메인 채팅 화면 컴포넌트 ---
@@ -89,7 +89,7 @@ export default function ChatScreen() {
     // TODO: 실제 백엔드 로직에 따라 handleBack 함수 구현 필요
     const handleBack = () => {
         console.log("뒤로가기 버튼 클릭");
-
+        navigate(-1);
     };
 
     // 스크롤을 항상 가장 아래로 이동시키는 함수
@@ -281,19 +281,26 @@ export default function ChatScreen() {
 
     // 렌더링
     return (
-        <div className="relative h-full bg-white font-pretendard flex flex-col">
-            <Header2 title="택시팟 채팅" onBack={handleBack} onMenu={handleOpenMenu} />
+        <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
+            <Header 
+                title="택시팟 채팅" 
+                onBack={handleBack} 
+                rightIcon={MenuIcon} // 메뉴 아이콘 표시
+                onRightClick={() => setIsMenuOpen(true)} // 클릭 시 메뉴 열기
+            />
 
             <div className="flex flex-col flex-grow w-full">
                 {/* 1. 매칭 정보 섹션 */}
-                <MatchInfo
-                    destination="서울여대 누리관"
-                    departureIcon="🍄"
-                    departure="태릉입구 7번출구"
-                    departureTime="14:50"
-                    members="2/4"
-                    estimatedFare="5,000원"
-                />
+                <div className="w-full flex justify-center py-4"> 
+                    <MatchInfo
+                        destination="서울여대 누리관"
+                        departureIcon="🍄"
+                        departure="태릉입구 7번출구"
+                        departureTime="14:50"
+                        members="2/4"
+                        estimatedFare="5,000원"
+                    />
+                </div>
                 
                 {/* 2. 채팅 메시지 목록 */}
                 <div 
@@ -379,12 +386,40 @@ export default function ChatScreen() {
                         </div>
                     </div>
                 </div>
-                <BottomMenu
-                    isOpen={isMenuOpen}      // 상태 값 전달
-                    onClose={handleCloseMenu} // 닫기 함수 전달
-                    menuItems={menuItems}   // 메뉴 항목 리스트 전달
-                />
-            </div>
+
+                {isMenuOpen && (
+                <div
+                    className="absolute inset-0 z-50 flex justify-center items-end bg-black-90 bg-opacity-70"
+                    onClick={handleCloseMenu} // 외부 클릭 시 닫기
+                >
+                    <div
+                        className="w-full max-w-[393px] mx-auto bg-white rounded-t-[20px] pt-3 pb-8 relative"
+                        onClick={(e) => e.stopPropagation()} // 메뉴 내부 클릭 시 버블링 방지
+                    >
+                        {/* 상단 닫기 핸들 */}
+                        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mb-5" />
+
+                        <h2 className="px-4 text-head-semibold-20 text-black-90 mt-4 mb-4">
+                            메뉴
+                        </h2>
+
+                        <div className="flex flex-col">
+                            {/* 메뉴 항목 리스트 렌더링 */}
+                            {menuItems.map((item, index) => (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
+                                    onClick={item.onClick}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
 

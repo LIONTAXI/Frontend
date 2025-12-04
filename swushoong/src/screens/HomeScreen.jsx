@@ -91,8 +91,8 @@ export default function HomeScreen() {
       navigate("/home");      // 이미 이 화면이지만 명시적으로
     } else if (key === "my") {
       navigate("/my");    // 마이페이지로 이동
-    } else if (key === "chat") {
-      navigate("/chat");  // 나중에 채팅 화면 만들면 연결
+    } else if (key === "chat-list") {
+      navigate("/chat-list");  // 나중에 채팅 화면 만들면 연결
     }
   };
 

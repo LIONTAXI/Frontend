@@ -64,7 +64,7 @@ export default function App() {
 
           {/* === 채팅 === */}
           <Route path="/chat-list" element={<ChatListScreen/>} />
-          <Route path="/chat" element={<ChatScreen/>} />
+          <Route path="/chat/:chatId" element={<ChatScreen/>} />
 
           {/* === 정산 === */}
           <Route path="/confirm" element={<CountScreen/>} /> 

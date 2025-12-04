@@ -62,7 +62,7 @@ export default function PayMemberScreen() {
             </div>
 
             {/* 3. 인당 지불할 금액 섹션  */}
-            <div className="bg-[#FFF4DF] flex-col flex-grow w-full px-4 pt-6 pb-64">
+            <div className="bg-[#FFF4DF] h-screen flex-col flex-grow w-full px-4 pt-6 pb-64">
             <div className="bg-white rounded-lg p-4 space-y-4">
                 <h3 className="text-head-semibold-20 text-[#000] mb-2 mt-0">
                     인당 지불할 금액
