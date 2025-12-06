@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Logo from "../assets/img/img_logo.svg";
+import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import BtnLong from "../components/BtnLong";
 import Admin from "../api/Admin";
-
 
 export default function AdminLoginScreen() {
   const [showPw, setShowPw] = useState(false);
@@ -58,9 +57,9 @@ export default function AdminLoginScreen() {
 
       {/* ===== 로고 ===== */}
       <img
-        src={Logo}
+        src={LogoAdmin}
         alt="logo"
-        className="w-[88px] h-[40px] absolute left-4"
+        className="w-[147px] h-[58px] absolute left-4"
       />
 
       {/* ===== 메인 입력 영역 ===== */}
