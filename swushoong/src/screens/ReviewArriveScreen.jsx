@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header2 from "../components/Header2";
-import BottomMenu from "./components/BottomMenu";
+import BottomMenu from "../components/BottomMenu";
 import Profile from "../assets/img/profileIMG.svg";
 
 // == 더미 데이터 ==

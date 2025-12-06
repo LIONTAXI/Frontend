@@ -1,8 +1,8 @@
 // src/components/ChatInput.jsx
 
 import React, { useState } from 'react';
-import IconCamera from '../../assets/icon/icon_camera.svg';
-import IconSend from '../../assets/icon/icon_send.svg';
+import IconCamera from '../assets/icon/icon_camera.svg';
+import IconSend from '../assets/icon/icon_send.svg';
 
 // 채팅 입력창 컴포넌트
 const ChatInput = ({ onSend, onCameraClick }) => {
