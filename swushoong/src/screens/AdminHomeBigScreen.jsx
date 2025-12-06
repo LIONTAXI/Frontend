@@ -2,10 +2,10 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import IconSmall from "../assets/icon/icon_small.svg"; 
-import MailModal from "./components/MainModal"; // 메일 전송 모달 컴포넌트 
-import RequestItem from "./components/RequestItem"; // 수신 목록 컴포넌트 
-import SvgArrowLeft from "./components/svg_arrowLeft";
-import SvgArrowRight from "./components/svg_arrowRight";
+import MailModal from "../components/MainModal"; // 메일 전송 모달 컴포넌트 
+import RequestItem from "../components/RequestItem"; // 수신 목록 컴포넌트 
+import SvgArrowLeft from "../components/svg_arrowLeft";
+import SvgArrowRight from "../components/svg_arrowRight";
 import Example from "../assets/img/img_student.svg"; // 임시 학생증 정보 
 
 // 토글 목록 

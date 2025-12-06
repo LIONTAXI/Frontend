@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from "../components/Header";
 import ChatBubble from "../components/ChatBubble";
-import ActionButton from "./components/ActionButton"; 
-import ChatInput from "./components/ChatInput";
-import MatchInfo from "./components/MatchInfo";
+import ActionButton from "../components/ActionButton"; 
+import ChatInput from "../components/ChatInput";
+import MatchInfo from "../components/MatchInfo";
 import MenuIcon from "../assets/icon/icon_menu.svg";
 
 

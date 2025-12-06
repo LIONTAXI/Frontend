@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import BottomMenu from "./components/BottomMenu";
 import MenuIcon from "../assets/icon/icon_menu.svg";
 
 // == 더미 데이터 == 

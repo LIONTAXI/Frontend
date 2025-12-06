@@ -2,8 +2,8 @@
 import React, { useState, useMemo } from "react";
 import IconLeft from '../assets/icon/icon_left.svg';
 import IconDown from '../assets/icon/icon_down.svg';
-import BtnNegetive from "./components/btn_negetive";
-import BtnPositive from "./components/btn_positive";
+import BtnNegetive from "../components/btn_negetive";
+import BtnPositive from "../components/btn_positive";
 
 export default function ReviewMemberScreen () {
     // ====== 더미 데이터 사용자 =======

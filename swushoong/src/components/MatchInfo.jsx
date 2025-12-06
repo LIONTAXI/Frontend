@@ -1,8 +1,8 @@
 // 채팅화면에 쓰이는 매칭 정보 컴포넌트
 
 import React from "react";
-import IconPin2 from '../../assets/icon/icon_pin2.svg';
-import IconPeople from '../../assets/icon/icon_people.svg';
+import IconPin2 from '../assets/icon/icon_pin2.svg';
+import IconPeople from '../assets/icon/icon_people.svg';
 
 const MatchInfo = ({ destination, departureIcon, departure, departureTime, members, estimatedFare }) => (
     <div className="bg-black-10 px-4 py-3 rounded border-black-10 w-[361px]">
