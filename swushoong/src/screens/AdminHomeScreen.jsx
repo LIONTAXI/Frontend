@@ -36,7 +36,9 @@ const ApprovalCard = ({ name, studentId }) => {
                     </span>
                 </p>
             </div>
-            <button className="w-full w-[176.5px] py-2 mt-1 text-body-bold-16 text-white bg-[#FC7E2A] rounded-lg transition-colors duration-150">
+            <button 
+                className="w-full w-[176.5px] py-2 mt-1 text-body-bold-16 text-white bg-[#FC7E2A] rounded-lg transition-colors duration-150"
+            >
                 승인
             </button>
         </div>
