@@ -8,6 +8,9 @@ import CheckedIcon from "../assets/icon/icon_checked2.svg";
 import BlindIcon from "../assets/icon/icon_blind.svg";
 import EyeIcon from "../assets/icon/icon_eye.svg";
 
+//비밀번호 변경 API
+import { changePassword } from "../api/auth";
+
 export default function JoinScreen2() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,14 +31,35 @@ export default function JoinScreen2() {
 
   const canSubmit = isLengthOk && hasSpecial && isMatch;
 
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleBack = () => {
     window.history.back();
   };
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    console.log("비밀번호 변경 요청", { userId, password });
-    navigate("/");
+  //API 사용
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) return;
+
+    const email = `${userId}${domain}`;
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+
+      const data = await changePassword(email, password, passwordCheck);
+      alert(data.message || "비밀번호가 성공적으로 변경되었습니다.");
+      navigate("/"); // 로그인 화면으로
+    } catch (err) {
+      console.error("비밀번호 변경 실패:", err);
+      setErrorMessage(
+        err.response?.message ||
+          "비밀번호 변경에 실패했습니다. 다시 시도해 주세요."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -178,6 +202,13 @@ export default function JoinScreen2() {
                 비밀번호 일치
               </span>
             </div>
+
+            {/* 에러 메시지 */}
+            {errorMessage && (
+              <p className="mt-1 text-body-regular-14 text-oryu">
+                {errorMessage}
+              </p>
+            )}
           </section>
         </div>
       </main>
@@ -187,7 +218,7 @@ export default function JoinScreen2() {
         <BtnLong
           label="완료"
           variant={canSubmit ? "primary" : "disabled"}
-          disabled={!canSubmit}
+          disabled={!canSubmit || isSubmitting}
           onClick={handleSubmit}
           className="w-full"
         />

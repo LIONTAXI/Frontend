@@ -3,17 +3,18 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import BtnLong from "../components/BtnLong";
-import InputInfo from "../components/InputInfo"; // 스타일 참고/추후 재사용용
+import InputInfo from "../components/InputInfo";
 import CheckedIcon from "../assets/icon/icon_checked2.svg";
 import BlindIcon from "../assets/icon/icon_blind.svg";
 import EyeIcon from "../assets/icon/icon_eye.svg";
+
+import { setSignupPassword } from "../api/auth";
 
 export default function JoinScreen2() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const domain = "@swu.ac.kr";
-  // 1단계에서 넘어온 아이디 받기
   const userId = location.state?.userId || "";
 
   const [password, setPassword] = useState("");
@@ -21,7 +22,9 @@ export default function JoinScreen2() {
   const [showPw, setShowPw] = useState(false);
   const [showPwCheck, setShowPwCheck] = useState(false);
 
-  // 비밀번호 조건
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const isLengthOk = password.length >= 8;
   const hasSpecial = /[!@#$%^&*]/.test(password);
   const isMatch = password.length > 0 && password === passwordCheck;
@@ -32,21 +35,39 @@ export default function JoinScreen2() {
     window.history.back();
   };
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    console.log("회원가입 요청", { userId, password });
-    navigate("/join3");
+  const handleSubmit = async () => {
+    if (!canSubmit || isSubmitting) return;
+
+    const email = `${userId}${domain}`;
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+
+      console.log("[JoinScreen2] 비밀번호 설정 요청:", { email });
+
+      const data = await setSignupPassword(email, password, passwordCheck);
+      console.log("[JoinScreen2] setSignupPassword 성공:", data);
+
+      alert(data.message || "회원가입이 완료되었습니다.");
+      navigate("/join3");
+    } catch (err) {
+      console.error("[JoinScreen2] setSignupPassword 실패:", err);
+      setErrorMessage(
+        err.response?.message ||
+          "비밀번호 설정에 실패했습니다. 다시 시도해 주세요."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
-      {/* ===== 헤더 ===== */}
       <Header title="회원가입" onBack={handleBack} />
 
-      {/* ===== 메인 영역 ===== */}
       <main className="flex-1 px-4 pt-8 pb-4">
         <div className="w-full max-w-[361px] mx-auto flex flex-col gap-8">
-          {/* --- 아이디 영역 (인증 완료 표시) --- */}
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <p className="text-head-semibold-20 text-black-90">아이디</p>
@@ -72,11 +93,9 @@ export default function JoinScreen2() {
             </div>
           </section>
 
-          {/* --- 비밀번호 입력 --- */}
           <section className="flex flex-col gap-4">
             <p className="text-head-semibold-20 text-black-90">비밀번호</p>
 
-            {/* 비밀번호 인풋 + 눈 아이콘 */}
             <div className="w-full bg-black-10 rounded-md px-4 h-12 flex items-center justify-between">
               <input
                 type={showPw ? "text" : "password"}
@@ -97,7 +116,6 @@ export default function JoinScreen2() {
               </button>
             </div>
 
-            {/* 비밀번호 조건 2개 */}
             <div className="w-full flex justify-between items-center text-body-regular-14">
               <div className="flex items-center gap-1">
                 <img
@@ -135,7 +153,6 @@ export default function JoinScreen2() {
             </div>
           </section>
 
-          {/* --- 비밀번호 확인 --- */}
           <section className="flex flex-col gap-4">
             <p className="text-head-semibold-20 text-black-90">
               비밀번호 확인
@@ -161,7 +178,6 @@ export default function JoinScreen2() {
               </button>
             </div>
 
-            {/* 비밀번호 일치 여부 */}
             <div className="flex items-center gap-1 text-body-regular-14">
               <img
                 src={CheckedIcon}
@@ -178,16 +194,21 @@ export default function JoinScreen2() {
                 비밀번호 일치
               </span>
             </div>
+
+            {errorMessage && (
+              <p className="mt-1 text-body-regular-14 text-oryu">
+                {errorMessage}
+              </p>
+            )}
           </section>
         </div>
       </main>
 
-      {/* ===== 하단 회원가입 버튼 ===== */}
       <div className="px-4 pb-6">
         <BtnLong
-          label="회원가입"
+          label={canSubmit ? "회원가입" : "회원가입"}
           variant={canSubmit ? "primary" : "disabled"}
-          disabled={!canSubmit}
+          disabled={!canSubmit || isSubmitting}
           onClick={handleSubmit}
           className="w-full"
         />

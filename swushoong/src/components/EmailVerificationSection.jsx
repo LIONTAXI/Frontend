@@ -5,6 +5,7 @@ export default function EmailVerificationSection({
   email = "",
   onResend,
   onFilledChange,          // 코드가 다 채워졌는지 알려줄 콜백
+  onCodeChange,            // 현재 코드값(문자열) 전달 콜백
 }) {
   const [timeLeft, setTimeLeft] = useState(180);   // 4분 타이머
   const [codes, setCodes] = useState(Array(6).fill(""));
@@ -24,12 +25,13 @@ export default function EmailVerificationSection({
   const minutes = String(Math.floor(timeLeft / 60)).padStart(2, "0");
   const seconds = String(timeLeft % 60).padStart(2, "0");
 
-  // 코드 변경 시 부모에게 “다 채워졌는지” 알려주는 헬퍼
+  // 코드 변경 시 부모에게 “다 채워졌는지 + 현재 코드값” 알려주는 헬퍼
   const notifyFilled = (nextCodes) => {
-    if (onFilledChange) {
-      const filled = nextCodes.every((c) => c !== "");
-      onFilledChange(filled);
-    }
+    const filled = nextCodes.every((c) => c !== "");
+    if (onFilledChange) onFilledChange(filled);
+
+    // 현재 코드 6자리를 문자열로 전달
+    if (onCodeChange) onCodeChange(nextCodes.join(""));
   };
 
   const handleChange = (idx, e) => {
@@ -39,7 +41,7 @@ export default function EmailVerificationSection({
     setCodes((prev) => {
       const next = [...prev];
       next[idx] = value;
-      notifyFilled(next);         //여기서 채워진 상태 전달
+      notifyFilled(next);         // 여기서 상태/코드 전달
       return next;
     });
 
@@ -58,7 +60,7 @@ export default function EmailVerificationSection({
     setTimeLeft(180);
     const empty = Array(6).fill("");
     setCodes(empty);
-    notifyFilled(empty);          //다시 받기 시 false 전달
+    notifyFilled(empty);          // 다시 받기 시 false + "" 전달
     if (onResend) onResend();
   };
 

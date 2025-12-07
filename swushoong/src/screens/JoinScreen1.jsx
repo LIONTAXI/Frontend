@@ -6,13 +6,21 @@ import BtnLong from "../components/BtnLong";
 import InputInfo from "../components/InputInfo";
 import EmailVerificationSection from "../components/EmailVerificationSection";
 
+import {
+  sendSignupCode,
+  resetSignupCode,
+  verifySignupCode,
+} from "../api/auth";
+
 export default function JoinScreen1() {
   const [userId, setUserId] = useState("");
   const domain = "@swu.ac.kr";
 
-  const canSend = userId.trim().length > 0;            // 아이디 입력 여부
+  const canSend = userId.trim().length > 0;
   const [showVerification, setShowVerification] = useState(false);
-  const [isCodeFilled, setIsCodeFilled] = useState(false);  // 코드 6자리 다 채워졌는지
+  const [isCodeFilled, setIsCodeFilled] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const navigate = useNavigate();
 
@@ -20,22 +28,58 @@ export default function JoinScreen1() {
     window.history.back();
   };
 
-  const handleSendCode = () => {
-    if (!canSend) return;
-    console.log("인증번호 보내기:", `${userId}${domain}`);
-    setShowVerification(true);
+  const email = `${userId.trim()}${domain}`;
+  const displayEmail = `${userId || "swuni123"}${domain}`;
+
+  const handleSendCode = async () => {
+    if (!canSend || isSending) return;
+    try {
+      setIsSending(true);
+      console.log("[JoinScreen1] 인증번호 보내기:", email);
+      const data = await sendSignupCode(email);
+      console.log("[JoinScreen1] sendSignupCode 성공:", data);
+      alert(data.message || "인증 코드가 전송되었습니다.");
+      setShowVerification(true);
+    } catch (err) {
+      console.error("[JoinScreen1] sendSignupCode 실패:", err);
+      alert(err.response?.message || "인증 코드 전송에 실패했습니다.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleVerify = () => {
-    console.log("인증하기 클릭");
-    navigate("/join2", {state: { userId}});
+  const handleVerify = async () => {
+    if (!isCodeFilled || !verificationCode) return;
+    try {
+      console.log("[JoinScreen1] 인증하기 클릭:", {
+        email,
+        verificationCode,
+      });
+      const data = await verifySignupCode(email, verificationCode);
+      console.log("[JoinScreen1] verifySignupCode 성공:", data);
+      alert(data.message || "인증이 완료되었습니다.");
+      navigate("/join2", { state: { userId } });
+    } catch (err) {
+      console.error("[JoinScreen1] verifySignupCode 실패:", err);
+      alert(err.response?.message || "인증 코드가 일치하지 않습니다.");
+    }
   };
 
-  const handleResendCode = () => {
-    console.log("인증코드 다시 받기");
+  const handleResendCode = async () => {
+    try {
+      console.log("[JoinScreen1] 인증코드 다시 받기:", email);
+      const data = await resetSignupCode(email);
+      console.log("[JoinScreen1] resetSignupCode 성공:", data);
+      alert(
+        data.message ||
+          "인증 코드가 재전송되었습니다. (기존 코드는 초기화되었습니다.)"
+      );
+    } catch (err) {
+      console.error("[JoinScreen1] resetSignupCode 실패:", err);
+      alert(err.response?.message || "인증 코드 재전송에 실패했습니다.");
+    }
   };
 
-  // 하단 버튼 상태/텍스트
   const primaryLabel = showVerification ? "인증하기" : "인증번호 보내기";
   const primaryVariant = showVerification
     ? isCodeFilled
@@ -44,30 +88,23 @@ export default function JoinScreen1() {
     : canSend
     ? "primary"
     : "disabled";
-  const primaryDisabled = showVerification
-    ? !isCodeFilled
-    : !canSend;
+  const primaryDisabled = showVerification ? !isCodeFilled : !canSend;
 
   const handlePrimaryClick = () => {
     if (primaryDisabled) return;
     if (showVerification) {
-      handleVerify();      // 인증하기
+      handleVerify();
     } else {
-      handleSendCode();    // 인증번호 보내기
+      handleSendCode();
     }
   };
 
-  const fullEmail = `${userId || "swuni123"}${domain}`;
-
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
-      {/* ===== 헤더 ===== */}
       <Header title="회원가입" onBack={handleBack} />
 
-      {/* ===== 메인 콘텐츠 ===== */}
       <main className="flex-1 px-4 pt-8 pb-4">
         <section className="w-full max-w-[361px] mx-auto flex flex-col gap-4">
-          {/* 아이디 텍스트 영역 */}
           <div className="flex flex-col gap-1">
             <p className="text-head-semibold-20 text-black-90">아이디</p>
             <p className="text-body-regular-16 text-black-70">
@@ -75,7 +112,6 @@ export default function JoinScreen1() {
             </p>
           </div>
 
-          {/* 아이디 인풋 + @swu.ac.kr */}
           <div className="mt-2 w-full h-12 bg-black-10 rounded-md px-4 flex items-center justify-between">
             <input
               type="text"
@@ -89,24 +125,23 @@ export default function JoinScreen1() {
           </div>
         </section>
 
-        {/* ⭐ 인증코드 입력 영역 */}
         {showVerification && (
           <section className="w-full max-w-[361px] mx-auto mt-8">
             <EmailVerificationSection
-              email={fullEmail}
+              email={displayEmail}
               onResend={handleResendCode}
-              onFilledChange={setIsCodeFilled}   // 코드 채움 여부 받기
+              onFilledChange={setIsCodeFilled}
+              onCodeChange={setVerificationCode}
             />
           </section>
         )}
       </main>
 
-      {/* ===== 하단 버튼 ===== */}
       <div className="px-4 pb-6">
         <BtnLong
           label={primaryLabel}
           variant={primaryVariant}
-          disabled={primaryDisabled}
+          disabled={primaryDisabled || isSending}
           onClick={handlePrimaryClick}
           className="w-full"
         />
