@@ -5,13 +5,16 @@ import Header from "../components/Header";
 import BtnLong from "../components/BtnLong";
 import ImageIcon from "../assets/icon/icon_image.svg";
 
+import { signupLibraryOcr } from "../api/auth";
+
 export default function JoinScreen3() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
-  // 나중에 백엔드에서 인식 결과를 넣어 줄 자리
-  const [userName, setUserName] = useState("");     
-  const [studentId, setStudentId] = useState("");  
+  const [userName, setUserName] = useState("");
+  const [studentId, setStudentId] = useState("");
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -27,34 +30,74 @@ export default function JoinScreen3() {
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
 
-    // TODO: 이후 백엔드 연결 시 여기서 setUserName / setStudentId 호출
+    // 새 이미지를 선택하면 이전 인식 결과는 초기화
+    setUserName("");
+    setStudentId("");
   };
 
-  const handleRegisterImage = () => {
-    if (!selectedImage) return;
-    console.log("도서관 전자출입증 이미지 등록:", selectedImage);
+  // 이미지로 OCR 요청 보내고, 응답 결과를 화면에 반영만 하는 함수
+  const handleRegisterImage = async () => {
+    if (!selectedImage || isSubmitting) return;
 
-    // 지금은 일단 성공으로 보냄
-    navigate("/verify-result", {
-      state: { success: false },
-    });
+    try {
+      setIsSubmitting(true);
+      console.log("[JoinScreen3] OCR 요청 이미지:", selectedImage);
+
+      const formData = new FormData();
+      formData.append("image", selectedImage);
+
+      for (const [k, v] of formData.entries()) {
+        console.log("formData entry:", k, v);
+      }
+
+      const data = await signupLibraryOcr(formData);
+      console.log("[JoinScreen3] signupLibraryOcr 성공:", data);
+
+      if (data.extractedName) setUserName(data.extractedName);
+      if (data.extractedStudentId) setStudentId(data.extractedStudentId);
+    } catch (err) {
+      console.error("[JoinScreen3] signupLibraryOcr 실패:", err);
+      navigate("/verify-result", {
+        state: { success: false },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const canSubmit = !!selectedImage;
+  // 버튼 클릭 시 동작:
+  // 1) 아직 이름/학번이 없으면 OCR 요청 실행
+  // 2) 이미 이름/학번이 채워져 있으면 결과 화면으로 이동
+  const handlePrimaryClick = () => {
+    if (!selectedImage || isSubmitting) return;
 
-  // 자리수를 맞추기 위한 더미 텍스트 (보이지 않지만 폭은 유지)
-  const nameDisplay = userName || "김슈니";          
-  const idDisplay = studentId || "2021111222";      
+    const hasResult = !!userName && !!studentId;
+
+    if (!hasResult) {
+      handleRegisterImage();
+    } else {
+      navigate("/verify-result", {
+        state: {
+          success: true,
+          userName,
+          studentId,
+        },
+      });
+    }
+  };
+
+  const canSubmit = !!selectedImage && !isSubmitting;
+  const hasResult = !!userName && !!studentId;
+
+  const nameDisplay = userName || "김슈니";
+  const idDisplay = studentId || "2021111222";
 
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
-      {/* ===== 헤더 ===== */}
       <Header title="2차 인증" onBack={handleBack} />
 
-      {/* ===== 메인 콘텐츠 ===== */}
       <main className="flex-1 px-4 pt-8 pb-4">
         <section className="w-full max-w-[361px] mx-auto flex flex-col gap-6">
-          {/* 타이틀 & 설명 */}
           <div className="flex flex-col gap-1">
             <p className="text-head-semibold-20 text-black-90">
               도서관 전자출입증 인증
@@ -64,16 +107,15 @@ export default function JoinScreen3() {
             </p>
           </div>
 
-          {/* 업로드 박스 */}
           <div className="mt-6 flex justify-center">
             <label
               htmlFor="library-card-upload"
               className={`w-[200px] h-[200px] rounded-lg flex items-center justify-center 
                 cursor-pointer overflow-hidden
                 ${
-                    previewUrl
-                    ? "bg-white border border-black-20"   // 이미지 선택 시: 흰 배경 + 테두리
-                    : "bg-black-10 border border-transparent" // 미선택 시: 회색 박스, 테두리 없음
+                  previewUrl
+                    ? "bg-white border border-black-20"
+                    : "bg-black-10 border border-transparent"
                 }`}
             >
               {previewUrl ? (
@@ -99,11 +141,9 @@ export default function JoinScreen3() {
             />
           </div>
 
-          {/* 이미지가 선택된 경우에만 이름/학번 영역 표시 (이미지 기준 가운데 정렬) */}
           {selectedImage && (
             <div className="mt-8 flex flex-col items-center gap-3 text-body-regular-16">
-              {/* 폭을 이미지와 동일하게 200px로 고정*/}
-              <div className="w-[150px] flex justify-between">
+              <div className="w-[150px] flex items-center gap-8">
                 <span className="text-black-50">이름</span>
                 <span
                   className={
@@ -115,7 +155,7 @@ export default function JoinScreen3() {
                   {nameDisplay}
                 </span>
               </div>
-              <div className="w-[150px] flex justify-between">
+              <div className="w-[150px] flex items-center gap-8">
                 <span className="text-black-50">학번</span>
                 <span
                   className={
@@ -132,13 +172,18 @@ export default function JoinScreen3() {
         </section>
       </main>
 
-      {/* ===== 하단 버튼 ===== */}
       <div className="px-4 pb-6">
         <BtnLong
-          label="이미지 등록"
+          label={
+            isSubmitting
+              ? "처리 중..."
+              : hasResult
+              ? "인증 완료"
+              : "이미지 등록"
+          }
           variant={canSubmit ? "primary" : "disabled"}
           disabled={!canSubmit}
-          onClick={handleRegisterImage}
+          onClick={handlePrimaryClick}
           className="w-full"
         />
       </div>

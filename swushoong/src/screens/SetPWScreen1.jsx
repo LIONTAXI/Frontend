@@ -6,6 +6,13 @@ import BtnLong from "../components/BtnLong";
 import InputInfo from "../components/InputInfo";
 import EmailVerificationSection from "../components/EmailVerificationSection";
 
+// 비밀번호 재설정 관련 API
+import {
+  sendPasswordResetCode,
+  resendPasswordResetCode,
+  verifyPasswordResetCode,
+} from "../api/auth";
+
 export default function JoinScreen1() {
   const [userId, setUserId] = useState("");
   const domain = "@swu.ac.kr";
@@ -14,25 +21,59 @@ export default function JoinScreen1() {
   const [showVerification, setShowVerification] = useState(false);
   const [isCodeFilled, setIsCodeFilled] = useState(false);
 
+  // 인증 코드 값(EmailVerificationSection에서 올려줄 예정)
+  const [verificationCode, setVerificationCode] = useState("");
+
   const navigate = useNavigate();
 
   const handleBack = () => {
     window.history.back();
   };
 
-  const handleSendCode = () => {
+  const fullEmail = `${userId.trim()}${domain}`;
+
+  // 코드 전송
+  const handleSendCode = async () => {
     if (!canSend) return;
-    console.log("인증번호 보내기:", `${userId}${domain}`);
-    setShowVerification(true);
+
+    try {
+      const data = await sendPasswordResetCode(fullEmail);
+      // { success:true, message, email }
+      alert(data.message || "인증 코드가 전송되었습니다.");
+      setShowVerification(true);
+    } catch (err) {
+      console.error("코드 전송 실패:", err);
+      alert(err.response?.message || "인증 코드 전송에 실패했습니다.");
+    }
   };
 
-  const handleVerify = () => {
-    console.log("인증하기 클릭");
-    navigate("/set-pw2", { state: { userId } });
+  // 코드 검증
+  const handleVerify = async () => {
+    try {
+      const data = await verifyPasswordResetCode(
+        fullEmail,
+        verificationCode
+      );
+      alert(data.message || "인증이 완료되었습니다.");
+      navigate("/set-pw2", { state: { userId } });
+    } catch (err) {
+      console.error("코드 검증 실패:", err);
+      alert(err.response?.message || "인증 코드가 일치하지 않습니다.");
+    }
   };
 
-  const handleResendCode = () => {
-    console.log("인증코드 다시 받기");
+  // 코드 재전송
+  const handleResendCode = async () => {
+    try {
+      const data = await resendPasswordResetCode(fullEmail);
+      alert(
+        data.message ||
+          "인증 코드가 재전송되었습니다. (기존 코드는 초기화되었습니다.)"
+      );
+    } catch (err) {
+      console.error("코드 재전송 실패:", err);
+      alert(err.response?.message || "인증 코드 재전송에 실패했습니다.");
+    }
   };
 
   const primaryLabel = showVerification ? "인증하기" : "인증번호 보내기";
@@ -53,8 +94,6 @@ export default function JoinScreen1() {
       handleSendCode();
     }
   };
-
-  const fullEmail = `${userId || "swuni123"}${domain}`;
 
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
@@ -93,6 +132,7 @@ export default function JoinScreen1() {
               email={fullEmail}
               onResend={handleResendCode}
               onFilledChange={setIsCodeFilled}
+              onCodeChange={setVerificationCode}
             />
           </section>
         )}
