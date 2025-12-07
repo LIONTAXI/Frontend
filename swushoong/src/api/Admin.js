@@ -124,32 +124,48 @@ export async function getRejectionReasons() {
     });
 }
 
-// --- 6. 관리자가 해당 요청 반려 ---
 /**
- * POST /api/admin/auth-requests/reject
- * 특정 인증 요청을 반려(거절)합니다.
- * 🚨 **주의**: 요청하신 API 명세가 "POST /api/admin/auth-requests/approve"로 승인/반려 모두 사용하는 것으로 보이나,
- * 일반적으로 반려(Reject)는 별도의 엔드포인트나 다른 파라미터를 사용합니다.
- * 여기서는 일반적인 RESTful 관행에 따라 **`/reject`** 엔드포인트가 있다고 가정하고 작성합니다.
- * 만약 요청하신 명세가 맞다면, **`approveAuthRequest`** 함수 내에서 파라미터로 처리 방식을 구분해야 합니다.
- * (요청하신 명세에 맞춰 아래 함수 이름을 **`rejectAuthRequestByApproveEndpoint`** 로 정의하고 구현합니다.)
- * @param {string | number} authId - 반려할 인증 요청의 ID
- * @param {string} [reasonId] - 반려 사유 ID (선택 사항, 서버 요구 사항에 따라 다름)
+ * 6. 관리자가 해당 요청 반려 (API 명세 반영)
+ * POST /api/admin/auth-requests/approve
+ * * @param {string | number} authId - 반려할 인증 요청의 ID
+ * @param {string} rejectionReason - 반려 사유 문자열 (필수)
+ * @returns {Promise<object>} - 서버 응답 데이터 (JSON 형식) 또는 에러 메시지
  */
-export async function rejectAuthRequestByApproveEndpoint(authId, reasonId) {
-    // 🚨 요청하신 엔드포인트(POST /api/admin/auth-requests/approve)를 사용하지만,
-    // 실제 반려 로직을 수행하도록 Body에 반려 정보를 포함시킵니다.
-    // 서버에서 요구하는 정확한 Body 구조로 변경해야 합니다.
+export async function rejectAuthRequestByApproveEndpoint(authId, rejectionReason) {
+    
+    // 1. 반려 사유 필수 검증 로직 추가
+    if (!rejectionReason || rejectionReason.trim() === "") {
+        // 명세에 따라 반려 사유가 없을 때 반환할 메시지를 Error 객체로 랩핑하여 던집니다.
+        throw new Error("반려 사유를 입력해주세요"); 
+    }
+
     const endpoint = "/api/admin/auth-requests/approve";
-    console.log(`Rejecting auth request ID: ${authId} with reason: ${reasonId}...`);
-    return apiRequest(endpoint, {
-        method: "POST",
-        body: JSON.stringify({ 
-            authId,
-            action: "REJECT", // 서버에서 반려임을 알 수 있는 필드 (예시)
-            reasonId,
-        }),
-    });
+    
+    console.log(`Rejecting auth request ID: ${authId} with reason: ${rejectionReason}...`);
+    
+    // 2. 요청 본문 구조 변경 (API 명세 반영)
+    const requestBody = {
+        authId: authId,
+        isApproved: false, // 반려 처리
+        rejectionReason: rejectionReason,
+    };
+    
+    // apiRequest 유틸리티 함수를 사용하여 API 호출
+    try {
+        const response = await apiRequest(endpoint, {
+            method: "POST",
+            body: JSON.stringify(requestBody), 
+        });
+
+        // 명세에 따라 "인증 요청이 반려되었습니다" 라는 응답을 가정
+        // apiRequest가 JSON 응답을 반환한다고 가정하면, 서버는 { message: "인증 요청이 반려되었습니다" } 형태일 수 있습니다.
+        return response; 
+        
+    } catch (error) {
+        // API 요청 자체에서 발생한 오류 (네트워크, 4xx, 5xx) 처리
+        console.error(`Error rejecting request ${authId}:`, error.message);
+        throw error;
+    }
 }
 
 // --- 7. 관리자 페이지에서 수신 목록 조회 (승인/반려 완료된 목록) ---
@@ -175,45 +191,3 @@ export default {
     rejectAuthRequestByApproveEndpoint,
     getCompletedAuthRequests,
 };
-
-// --- 사용 예시 (Usage Example) ---
-/*
-async function main() {
-    try {
-        // 1. 회원가입 승인 요청
-        const submitResult = await submitLibraryCardApproval({ name: "홍길동", ... });
-        console.log("Submit Result:", submitResult);
-
-        // 2. 전체 요청 목록 조회
-        const allRequests = await getAllAuthRequests({ page: 1 });
-        console.log("All Requests:", allRequests.data);
-        const firstAuthId = allRequests.data[0].id; // 첫 번째 요청 ID 가정
-
-        // 3. 상세 조회
-        const detail = await getAuthRequestDetails(firstAuthId);
-        console.log("Detail:", detail);
-
-        // 4. 승인
-        const approveResult = await approveAuthRequest(firstAuthId);
-        console.log("Approval Result:", approveResult);
-        
-        // 5. 반려 사유 목록 조회
-        const reasons = await getRejectionReasons();
-        console.log("Rejection Reasons:", reasons.data);
-        const rejectionReasonId = reasons.data[0].id; // 첫 번째 반려 사유 ID 가정
-
-        // 6. 반려 (⚠️ rejectAuthRequestByApproveEndpoint 사용)
-        // const rejectResult = await rejectAuthRequestByApproveEndpoint(firstAuthId, rejectionReasonId);
-        // console.log("Rejection Result:", rejectResult);
-
-        // 7. 완료된 목록 조회
-        const completed = await getCompletedAuthRequests();
-        console.log("Completed Requests:", completed.data);
-
-    } catch (error) {
-        console.error("Operation failed:", error.message);
-    }
-}
-
-// main();
-*/
