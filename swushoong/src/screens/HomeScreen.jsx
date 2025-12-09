@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import TaxiPotCard from "../components/TaxiPotCard";
@@ -11,88 +11,145 @@ import ContractIcon from "../assets/icon/icon_contraction.svg";
 import IconPin2 from "../assets/icon/icon_pin2.svg";
 import KakaoMap from "../components/KakaoMap";
 
+import { getTaxiPotList, updateUserStatus } from "../api/taxi";
+
 export default function HomeScreen() {
   const navigate = useNavigate();
 
   const hasNotification = false;
   const [viewMode, setViewMode] = useState("compact"); // compact | expanded
 
-  // 임시 더미 데이터
-  const taxiPots = [
-    {
-      id: 1,
-      destination: "서울여대 누리관",
-      exitInfo: "태릉입구 2번출구",
-      deadline: "14:50",
-      currentCount: 2,
-      maxCount: 4,
-      price: "5,000원",
-      emoji: "🐰",
-    },
-    {
-      id: 2,
-      destination: "서울여대 누리관",
-      exitInfo: "태릉입구 7번출구",
-      deadline: "14:50",
-      currentCount: 2,
-      maxCount: 4,
-      price: "5,000원",
-      emoji: "🍄",
-    },
-    {
-      id: 3,
-      destination: "서울여대 누리관",
-      exitInfo: "태릉입구 7번출구",
-      deadline: "14:50",
-      currentCount: 2,
-      maxCount: 4,
-      price: "5,000원",
-      emoji: "🐹",
-    },
-    {
-      id: 4,
-      destination: "서울여대 누리관",
-      exitInfo: "태릉입구 7번출구",
-      deadline: "14:50",
-      currentCount: 1,
-      maxCount: 4,
-      price: "5,000원",
-      emoji: "👤",
-    },
-  ];
+  // 헤더에 표시할 위치 문구
+  const [stationLabel, setStationLabel] = useState("내 위치 불러오는 중...");
+  // 실시간 내 위치
+  const [userLocation, setUserLocation] = useState(null);
 
-  const [selectedPotId, setSelectedPotId] = useState(
-    taxiPots[0]?.id ?? null
-  );
+  // 택시팟 목록
+  const [taxiPots, setTaxiPots] = useState([]);
+  const [selectedPotId, setSelectedPotId] = useState(null);
+
+  useEffect(() => {
+    // TODO: 실제 로그인 유저 ID 로 교체
+    const USER_ID = 1;
+
+    // ---- 1) 실시간 위치 추적 ----
+    if ("geolocation" in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setUserLocation({ latitude, longitude });
+
+          // 위치값으로 상태 업데이트 API 호출
+          updateUserStatus({
+            userId: USER_ID,
+            latitude,
+            longitude,
+          }).catch((err) => {
+            console.error("[HomeScreen] 유저 상태 업데이트 실패:", err);
+          });
+        },
+        (error) => {
+          console.error("[HomeScreen] 위치 정보 가져오기 실패:", error);
+          setStationLabel("위치 정보를 가져올 수 없어요");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000,
+        }
+      );
+
+      // 언마운트 시 watch 해제
+      return () => {
+        if (watchId != null) {
+          navigator.geolocation.clearWatch(watchId);
+        }
+      };
+    } else {
+      setStationLabel("위치 서비스 미지원");
+    }
+  }, []);
+
+  // ---- 2) 택시팟 목록 조회 ----
+  useEffect(() => {
+    const USER_ID = 1;
+    getTaxiPotList(USER_ID)
+      .then((list) => {
+        if (!Array.isArray(list)) return;
+
+        const mapped = list.map((item) => ({
+          id: item.id,
+          destination: item.destination,
+          exitInfo: item.departure,
+          deadline: item.meetingTime,
+          currentCount: item.currentParticipants,
+          maxCount: item.maxParticipants,
+          price:
+            item.expectedPrice != null
+              ? `${Number(item.expectedPrice).toLocaleString()}원`
+              : "",
+          // 서버에서 내려주는 이모지만 사용 (하드코딩 제거)
+          emoji: item.emoji,
+          isOwner:
+            typeof item.isOwner === "boolean" ? item.isOwner : false,
+          // 총대 픽커용 위치
+          latitude: item.latitude,
+          longitude: item.longitude,
+        }));
+
+        setTaxiPots(mapped);
+        if (mapped.length > 0) {
+          setSelectedPotId(mapped[0].id);
+        }
+      })
+      .catch((err) => {
+        console.error("[HomeScreen] 택시팟 목록 조회 실패:", err);
+      });
+  }, []);
 
   const toggleViewMode = () => {
-    setViewMode((prev) => (prev === "compact" ? "expanded" : "compact"));
+    setViewMode((prev) =>
+      prev === "compact" ? "expanded" : "compact"
+    );
   };
 
   const handleCreateTaxiPot = () => {
-    navigate("/add-taxi");
-  };
+  navigate("/add-taxi", {
+    state: {
+      // 지금 watchPosition으로 추적하고 있는 내 위치
+      hostLocation: userLocation,
+    },
+  });
+};
 
   const handleClickCard = (pot) => {
     setSelectedPotId(pot.id);
+    const isOwner =
+      typeof pot.isOwner === "boolean" ? pot.isOwner : false;
 
-    //frist card(my post)
-    if (pot.id === 1) {
-        navigate("/taxi-detail", {state: {isOwner: true}});
-    } else if (pot.id === 2) {
-        navigate("/taxi-detail", {state: {isOwner:false}});
-    } else {
-        navigate("/taxi-detail", {state: {isOwner:false}});
-    }
+    navigate("/taxi-detail", {
+      state: {
+        isOwner,
+        taxiPotId: pot.id,
+        taxiPot: pot,
+      },
+    });
+  };
+
+  // 내가 올린 택시팟이 하나라도 있는지
+  const isHostMe = taxiPots.some((pot) => pot.isOwner === true);
+
+  const handleSelectTaxiPotFromMap = (partyId) => {
+    setSelectedPotId(partyId);
   };
 
   const handleTabChange = (key) => {
     if (key === "home") {
-      navigate("/home");      // 이미 이 화면이지만 명시적으로
+      navigate("/home");
     } else if (key === "my") {
-      navigate("/my");    // 마이페이지로 이동
+      navigate("/my");
     } else if (key === "chat-list") {
-      navigate("/chat-list");  // 나중에 채팅 화면 만들면 연결
+      navigate("/chat-list");
     }
   };
 
@@ -107,7 +164,7 @@ export default function HomeScreen() {
             </div>
           </div>
           <span className="text-[20px] font-semibold text-black-70">
-            태릉입구역 7호선
+            {stationLabel}
           </span>
         </div>
 
@@ -126,7 +183,14 @@ export default function HomeScreen() {
 
       {/* ===== 지도 영역 (카카오맵 자리) ===== */}
       <div className="px-0">
-        <KakaoMap />
+        <KakaoMap
+          userLocation={userLocation}
+          taxiHosts={taxiPots}              // 총대 위치들
+          selectedTaxiPotId={selectedPotId} // 선택된 택시팟
+          onSelectTaxiPot={handleSelectTaxiPotFromMap}
+          onAddressChange={setStationLabel}
+          isHostMe={isHostMe}
+        />
       </div>
 
       {/* ===== 실시간 택시팟 섹션 ===== */}
@@ -165,7 +229,7 @@ export default function HomeScreen() {
               currentCount={pot.currentCount}
               maxCount={pot.maxCount}
               price={pot.price}
-              emoji={pot.emoji}
+              emoji={pot.emoji} // ← 서버 이모지 그대로
               highlighted={selectedPotId === pot.id}
               variant={viewMode === "compact" ? "small" : "big"}
               fullWidth={viewMode === "expanded"}
