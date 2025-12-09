@@ -4,68 +4,100 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import BtnLong from "../components/BtnLong";
 
+import { createTaxiPot, updateTaxiPot } from "../api/taxi";
+
 export default function AddTaxiScreen() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ===== 모드 판별 =====
-  // TaxiDetailScreen 에서 navigate("/add-taxi", { state: { mode: "edit", initialForm } })
   const isEditMode = location.state?.mode === "edit";
   const initialForm = location.state?.initialForm || {};
 
-  // ===== 폼 상태 (edit 모드일 때 초기값 세팅) =====
-  const [boarding, setBoarding] = useState(initialForm.boarding ?? ""); // 승차지
-  const [alighting, setAlighting] = useState(initialForm.alighting ?? ""); // 하차지
-  const [deadline, setDeadline] = useState(initialForm.deadline ?? ""); // 모집 마감 시각
+  const hostLocation = location.state?.hostLocation || null;
+
+  const [boarding, setBoarding] = useState(initialForm.boarding ?? "");
+  const [alighting, setAlighting] = useState(initialForm.alighting ?? "");
+  const [deadline, setDeadline] = useState(initialForm.deadline ?? "");
   const [recruitCount, setRecruitCount] = useState(
     initialForm.recruitCount ?? ""
-  ); // 모집 인원
-  const [price, setPrice] = useState(initialForm.price ?? ""); // 예상 가격 (숫자만)
+  );
+  const [price, setPrice] = useState(initialForm.price ?? "");
   const [description, setDescription] = useState(
     initialForm.description ?? ""
-  ); // 추가 설명
+  );
 
-  // 필수 값 모두 채워졌을 때만 버튼 활성화
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const canSubmit =
     boarding.trim().length > 0 &&
     alighting.trim().length > 0 &&
     deadline.trim().length > 0 &&
     recruitCount.trim().length > 0 &&
-    price.trim().length > 0;
+    price.trim().length > 0 &&
+    !isSubmitting;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
 
-    const payload = {
-      boarding,
-      alighting,
-      deadline,
-      recruitCount,
-      price,
-      description,
-    };
+    // 로그인한 유저 id 사용
+    const rawUserId = localStorage.getItem("userId");
+    const USER_ID = rawUserId ? Number(rawUserId) : null;
 
-    if (isEditMode) {
-      // TODO: 실제 수정 API 연동
-      console.log("택시팟 수정 요청", payload);
-    } else {
-      // TODO: 실제 생성 API 연동
-      console.log("택시팟 생성 요청", payload);
+    if (USER_ID == null) {
+      alert("로그인 정보가 없습니다. 다시 로그인해 주세요.");
+      navigate("/login");
+      return;
     }
 
-    // 일단 이전 화면으로 (상세 페이지)
-    navigate(-1);
+    const payload = {
+      userId: USER_ID,
+      departure: boarding, // 승차지
+      destination: alighting, // 하차지
+      meetingTime: deadline, // 모집 마감 시각
+      maxParticipants: Number(recruitCount), // 모집 인원
+      expectedPrice: Number(price), // 예상 가격
+      content: description, // 추가 설명
+      // 글 생성 시점의 좌표를 같이 저장
+      latitude: hostLocation?.latitude ?? null,
+      longitude: hostLocation?.longitude ?? null,
+    };
+
+    try {
+      setIsSubmitting(true);
+
+      if (isEditMode) {
+        const taxiPotId = initialForm.id;
+        console.log(
+          "[AddTaxiScreen] 택시팟 수정 요청:",
+          taxiPotId,
+          payload,
+          "userId:",
+        );
+       await updateTaxiPot(taxiPotId, payload);
+      } else {
+        console.log(
+          "[AddTaxiScreen] 택시팟 생성 요청:",
+          payload,
+          "userId:",
+        );
+        await createTaxiPot(payload);
+      }
+
+      navigate(-1);
+    } catch (err) {
+      console.error("[AddTaxiScreen] 택시팟 저장 실패:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
-      {/* Header */}
       <Header
         title={isEditMode ? "택시팟 수정" : "택시팟 생성"}
         onBack={() => navigate(-1)}
       />
 
-      {/* 내용 영역 */}
       <main className="flex-1 px-4 pt-4 pb-[96px] overflow-y-auto">
         <div className="flex flex-col gap-6">
           {/* --- 승차지 --- */}
@@ -100,11 +132,14 @@ export default function AddTaxiScreen() {
           <div className="flex flex-col gap-4">
             {/* 모집 마감 시각 */}
             <div className="flex flex-col gap-2">
-              <p className="text-body-bold-16 text-black-90">모집 마감 시각</p>
+              <p className="text-body-bold-16 text-black-90">
+                모집 마감 시각
+              </p>
               <div className="w-full bg-black-10 rounded-[4px] px-4 py-4 flex items-center">
                 <input
                   type="text"
                   value={deadline}
+                  placeholder="ex) 14:00"
                   onChange={(e) => setDeadline(e.target.value)}
                   className="w-full bg-transparent outline-none text-body-regular-16 text-black-90 placeholder:text-black-50"
                 />
@@ -113,11 +148,14 @@ export default function AddTaxiScreen() {
 
             {/* 모집 인원 */}
             <div className="flex flex-col gap-2">
-              <p className="text-body-bold-16 text-black-90">모집 인원</p>
+              <p className="text-body-bold-16 text-black-90">
+                모집 인원
+              </p>
               <div className="w-full bg-black-10 rounded-[4px] px-4 py-4 flex items-center">
                 <input
                   type="text"
                   value={recruitCount}
+                  placeholder="ex) 나를 포함한 총인원"
                   inputMode="numeric"
                   onChange={(e) => {
                     const onlyNumber = e.target.value.replace(/[^0-9]/g, "");
@@ -125,7 +163,9 @@ export default function AddTaxiScreen() {
                   }}
                   className="w-full bg-transparent outline-none text-body-regular-16 text-black-90 placeholder:text-black-50"
                 />
-                <span className="text-body-regular-16 text-black-50">명</span>
+                <span className="text-body-regular-16 text-black-50">
+                  명
+                </span>
               </div>
             </div>
           </div>
@@ -134,7 +174,9 @@ export default function AddTaxiScreen() {
           <div className="flex flex-col gap-4">
             {/* 예상 가격 */}
             <div className="flex flex-col gap-2">
-              <p className="text-body-bold-16 text-black-90">예상 가격</p>
+              <p className="text-body-bold-16 text-black-90">
+                예상 가격
+              </p>
               <div className="w-full bg-black-10 rounded-[4px] px-4 py-4 flex items-center">
                 <input
                   type="text"
@@ -146,7 +188,9 @@ export default function AddTaxiScreen() {
                   }}
                   className="w-full bg-transparent outline-none text-body-regular-16 text-black-90 placeholder:text-black-50"
                 />
-                <span className="text-body-regular-16 text-black-50">원</span>
+                <span className="text-body-regular-16 text-black-50">
+                  원
+                </span>
               </div>
             </div>
 
@@ -154,7 +198,9 @@ export default function AddTaxiScreen() {
             <div className="flex flex-col gap-2">
               <p className="text-body-bold-16 text-black-90">
                 추가 설명{" "}
-                <span className="text-body-bold-16 text-black-40">(선택)</span>
+                <span className="text-body-bold-16 text-black-40">
+                  (선택)
+                </span>
               </p>
               <div className="w-full bg-black-10 rounded-[4px] px-4 py-3">
                 <textarea
@@ -172,7 +218,6 @@ export default function AddTaxiScreen() {
         </div>
       </main>
 
-      {/* ===== 하단 버튼 ===== */}
       <div className="px-4 pb-6">
         <BtnLong
           label={isEditMode ? "수정 완료" : "택시팟 생성"}
