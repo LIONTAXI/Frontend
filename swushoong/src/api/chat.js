@@ -15,17 +15,23 @@ async function apiRequestWithAuth(path, options = {}) {
         throw new Error("Authorization token is missing.");
     }
     
-    // Authorization: Bearer {token} 헤더 설정
-    const authHeaders = {
-        'Authorization': `Bearer ${token}`,
-        ...(options.headers || {}), 
-    };
+    // 1. Authorization: Bearer {token} 헤더 생성
+    const authHeader = {
+        'Authorization': `Bearer ${token}`,
+    };
 
-    // auth.js의 apiRequest 함수를 사용하여 요청 실행
-    return apiRequest(path, {
-        ...options,
-        headers: authHeaders,
-    });
+    // 2. 기존 옵션에서 헤더를 분리하고, 인증 헤더와 기존 헤더를 병합합니다.
+    // 기존 options의 headers를 auth.js의 apiRequest에 병합되도록 전달해야 합니다.
+    const finalHeaders = {
+        ...authHeader,
+        ...(options.headers || {}),
+    };
+    
+    // auth.js의 apiRequest 함수를 사용하여 요청 실행
+    return apiRequest(path, {
+        ...options,
+        headers: finalHeaders, // ⭐️ 최종 병합된 헤더를 'headers' 속성에 전달
+    });
 }
 
 /**

@@ -182,8 +182,44 @@ export default function CountScreen () {
         // 계좌 정보 분리
         const accountParts = account.trim().split(/\s+/); 
         let bankName = accountParts[0] || "은행명 없음";
-        let accountNumber = accountParts.length > 1 ? accountParts.slice(1).join(' ') : accountParts[0];
-        accountNumber = accountNumber.replace(/[^0-9]/g, '');
+
+        let accountNumberCandidate = "";
+
+        if (accountParts.length > 1) {
+        // 공백이 2개 이상이면, 첫 번째는 은행명, 나머지는 계좌번호로 간주하고 합침
+        accountNumberCandidate = accountParts.slice(1).join('');
+        } else {
+        // 공백이 없으면, 입력 전체를 계좌번호 후보로 간주
+        accountNumberCandidate = accountParts[0]; 
+        }
+
+        let accountNumber = accountNumberCandidate.replace(/[^0-9-]/g, '');
+        
+        console.log("▶️ 최종 Request Body:", {
+        "taxiPartyId": finalTaxiPartyId,
+        "totalFare": totalFareValue,
+        "bankName": bankName,
+        "accountNumber": accountNumber, // 🚨 이 값을 확인!
+        "participants": calculatedAmounts
+        });
+
+        if (accountParts.length === 1 && !accountNumber.includes(bankName)) {
+        // 이 로직은 복잡해질 수 있으니, 최대한 명확하게 구분하는 것이 좋습니다.
+        // 예를 들어, 계좌번호에 숫자가 아닌 문자가 포함되어 있다면 그것을 은행명으로 간주합니다.
+        
+        // 현재 로직을 유지하면서, bankName이 단순 숫자만 포함하는 계좌번호가 되는 것을 방지
+        const isBankNameProbablyAccount = /^\d+$/.test(bankName); // bankName이 오직 숫자로만 이루어져 있다면?
+        if (isBankNameProbablyAccount) {
+            bankName = "은행명 없음"; // 서버에서 기본값 처리 가능하도록 임시 설정
+            //accountNumber = accountNumberCandidate.replace(/[^0-9-]/g, ''); // 입력 전체를 계좌번호로 간주
+        }
+        }
+
+        // 유효성 검사 추가 (생략 가능하나 권장)
+        if (!accountNumber) {
+            setError("유효한 계좌번호를 입력해주세요.");
+            return;
+        }
 
         // API 요청 바디 구성
         const requestBody = {

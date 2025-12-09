@@ -1,5 +1,5 @@
 // src/screens/TaxiDetailScreen.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import BtnLong from "../components/BtnLong";
@@ -10,26 +10,136 @@ import IconRight from "../assets/icon/icon_right.svg";
 import MenuIcon from "../assets/icon/icon_menu.svg";
 import KakaoMap from "../components/KakaoMap";
 
+import {
+  getTaxiPotDetail,
+  joinTaxiPot,
+  deleteTaxiPot,
+  getJoinRequests,
+} from "../api/taxi";
+
 export default function TaxiDetailScreen() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isOwner = false } = location.state || {};
+  const { isOwner = false, taxiPotId } = location.state || {};
+
+  // 로그인 시 저장해 둔 userId 사용
+  const rawUserId = localStorage.getItem("userId");
+  const USER_ID = rawUserId ? Number(rawUserId) : null;
+  console.log("[TaxiDetailScreen] USER_ID:", USER_ID);
+
+  const [userLocation, setUserLocation] = useState(null);
+
+  // 내 현재 위치 (픽커용)
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUserLocation({ latitude, longitude });
+      },
+      (err) => {
+        console.error("[TaxiDetailScreen] 위치 정보 가져오기 실패:", err);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000,
+      }
+    );
+
+    return () => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [requestState, setRequestState] = useState("idle"); // idle | requested | accepted
+  // 라우터에서 넘어온 isOwner를 초기값으로, 이후 hostId로 확정
+  const [isMyPost, setIsMyPost] = useState(isOwner);
+  // idle | requested | accepted
+  const [requestState, setRequestState] = useState("idle");
+  // 참여 요청 개수
+  const [joinRequestCount, setJoinRequestCount] = useState(0);
 
-  const detail = {
-    destination: "서울여대 누리관",
-    exitInfo: "태릉입구 7번출구",
-    deadline: "14:50",
-    currentCount: 2,
-    maxCount: 4,
-    price: "5,000원",
-    emoji: "🍄",
-    description:
-      "7출 앞에서 네이비 맨투맨에 베이지색 바지입고 있습니다. 50주년 기념관까지만 갑니다. 참고해주세요!!",
-  };
+  const [detail, setDetail] = useState({
+    id: taxiPotId ?? null,
+    destination: "",
+    exitInfo: "",
+    deadline: "",
+    currentCount: 0,
+    maxCount: 0,
+    price: "",
+    emoji: "",
+    description: "",
+    latitude: null,
+    longitude: null,
+  });
+
+  // 택시팟 정보 조회
+  useEffect(() => {
+  if (!taxiPotId || USER_ID == null) return;
+
+  getTaxiPotDetail(taxiPotId, USER_ID)
+    .then((data) => {
+      console.log("[TaxiDetailScreen] detail data:", data);
+
+      // hostId를 숫자로 변환해서 비교
+      const hostId = data.hostId != null ? Number(data.hostId) : null;
+      const isMine =
+        hostId != null && USER_ID != null && hostId === USER_ID;
+
+      console.log("[TaxiDetailScreen] hostId:", hostId, "USER_ID:", USER_ID, "isMine:", isMine);
+      setIsMyPost(isMine);
+
+      // 동승 상태 → 버튼 상태
+      if (data.participationStatus === "WAITING") {
+        setRequestState("requested");
+      } else if (data.participationStatus === "ACCEPTED") {
+        setRequestState("accepted");
+      } else {
+        setRequestState("idle");
+      }
+
+      setDetail({
+        id: data.id ?? taxiPotId,
+        destination: data.destination ?? "",
+        exitInfo: data.departure ?? "",
+        deadline: data.meetingTime ?? "",
+        currentCount: data.currentParticipants ?? 0,
+        maxCount: data.maxParticipants ?? 0,
+        price:
+          data.expectedPrice != null
+            ? `${Number(data.expectedPrice).toLocaleString()}원`
+            : "",
+        emoji: data.emoji || "🍊",
+        description: data.content ?? "",
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+      });
+    })
+    .catch((err) => {
+      console.error("[TaxiDetailScreen] 택시팟 정보 조회 실패:", err);
+    });
+}, [taxiPotId, USER_ID]);
+
+  // 총대 화면일 때만 참여 요청 개수 조회
+  useEffect(() => {
+    if (!isMyPost) return;
+
+    const id = detail.id ?? taxiPotId;
+    if (!id) return;
+
+    getJoinRequests(id, USER_ID)
+      .then((list) => {
+        const count = Array.isArray(list) ? list.length : 0;
+        setJoinRequestCount(count);
+      })
+      .catch((err) => {
+        console.error("[TaxiDetailScreen] 참여 요청 목록 조회 실패:", err);
+        setJoinRequestCount(0);
+      });
+  }, [isMyPost, detail.id, taxiPotId, USER_ID]);
 
   const primaryLabel =
     requestState === "idle"
@@ -41,15 +151,34 @@ export default function TaxiDetailScreen() {
   const primaryVariant =
     requestState === "requested" ? "disabled" : "primary";
 
-  const handlePrimaryClick = () => {
-    if (isOwner) return;
+  const handlePrimaryClick = async () => {
+    // 내가 쓴 글이면 같이 타기 버튼 동작 X
+    if (isMyPost) return;
+    if (!taxiPotId || USER_ID == null) return;
 
     if (requestState === "idle") {
-      setRequestState("requested");
+      try {
+        await joinTaxiPot(taxiPotId, USER_ID);
+        setRequestState("requested");
+      } catch (err) {
+        console.error("[TaxiDetailScreen] 같이 타기 요청 실패:", err);
+      }
     } else if (requestState === "requested") {
       setRequestState("accepted");
     } else if (requestState === "accepted") {
       console.log("채팅 화면으로 이동 (추후 연동)");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!detail.id && !taxiPotId) return;
+    const id = detail.id ?? taxiPotId;
+
+    try {
+      await deleteTaxiPot(id, USER_ID);
+      navigate(-1);
+    } catch (err) {
+      console.error("[TaxiDetailScreen] 택시팟 삭제 실패:", err);
     }
   };
 
@@ -58,15 +187,31 @@ export default function TaxiDetailScreen() {
       <Header
         title="택시팟 정보"
         onBack={() => navigate(-1)}
-        rightIcon={isOwner ? MenuIcon : undefined}
-        onRightClick={isOwner ? () => setIsMenuOpen(true) : undefined}
+        rightIcon={isMyPost ? MenuIcon : undefined}
+        onRightClick={isMyPost ? () => setIsMenuOpen(true) : undefined}
       />
 
-      {/* 본문 */}
       <main className="flex-1 overflow-y-auto pb-[96px]">
-        {/* 지도 영역 */}
+        {/* 상세 페이지 지도: 내 위치 + 이 택시팟 위치 표시 */}
         <div className="px-0">
-          <KakaoMap />
+          <KakaoMap
+            userLocation={userLocation}
+            taxiHosts={
+              detail.latitude && detail.longitude
+                ? [
+                    {
+                      id: detail.id,
+                      latitude: detail.latitude,
+                      longitude: detail.longitude,
+                      emoji: detail.emoji,
+                    },
+                  ]
+                : []
+            }
+            selectedTaxiPotId={detail.id}
+            isHostMe={isMyPost}
+            centerOn="host"
+          />
         </div>
 
         <section className="px-4 pt-4 flex flex-col gap-3">
@@ -81,8 +226,12 @@ export default function TaxiDetailScreen() {
             <div className="flex items-center gap-1">
               <img src={IconPeople2} alt="인원" className="w-5 h-5" />
               <span className="text-body-bold-16">
-                <span className="text-orange-main">{detail.currentCount}</span>
-                <span className="text-black-40">/{detail.maxCount}</span>
+                <span className="text-orange-main">
+                  {detail.currentCount}
+                </span>
+                <span className="text-black-40">
+                  /{detail.maxCount}
+                </span>
               </span>
             </div>
           </div>
@@ -93,7 +242,9 @@ export default function TaxiDetailScreen() {
             </p>
 
             <div className="flex items-center gap-2">
-              <span className="text-body-regular-16 text-black-40">마감</span>
+              <span className="text-body-regular-16 text-black-40">
+                마감
+              </span>
               <span className="text-body-bold-16 text-black-70">
                 {detail.deadline}
               </span>
@@ -101,7 +252,9 @@ export default function TaxiDetailScreen() {
 
             <div className="flex items-center justify-between">
               <div className="flex items-end gap-2">
-                <span className="text-body-bold-16 text-black-40">예상</span>
+                <span className="text-body-bold-16 text-black-40">
+                  예상
+                </span>
                 <span className="text-body-bold-18 text-black-70">
                   {detail.price}
                 </span>
@@ -132,16 +285,19 @@ export default function TaxiDetailScreen() {
         </section>
       </main>
 
-      {/* 하단 버튼 */}
       <div className="px-4 pb-6">
-        {isOwner ? (
+        {isMyPost ? (
           <div className="flex justify-between gap-2">
             <BtnShort label="매칭 종료" variant="disabled" />
-            <BtnShort 
-              label="참여 요청 (3)" 
-              variant="primary" 
-              onClick={() => navigate("/join-taxi")}
-              />
+            <BtnShort
+              label={`참여 요청 (${joinRequestCount})`}
+              variant="primary"
+              onClick={() =>
+                navigate("/join-taxi", {
+                  state: { taxiPotId: detail.id ?? taxiPotId },
+                })
+              }
+            />
           </div>
         ) : (
           <BtnLong
@@ -152,8 +308,7 @@ export default function TaxiDetailScreen() {
         )}
       </div>
 
-      {/* 메뉴 바텀시트 */}
-      {isOwner && isMenuOpen && (
+      {isMyPost && isMenuOpen && (
         <div
           className="absolute inset-0 z-50 flex justify-center items-end bg-black-90 bg-opacity-70"
           onClick={() => setIsMenuOpen(false)}
@@ -169,19 +324,18 @@ export default function TaxiDetailScreen() {
             </h2>
 
             <div className="flex flex-col">
-              {/* 게시글 수정 */}
               <button
                 type="button"
                 className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
                 onClick={() => {
                   const initialForm = {
-                    // AddTaxiScreen 의 필드 이름에 맞춰 매핑
-                    boarding: detail.exitInfo, // 승차지: 태릉입구 7번출구
-                    alighting: detail.destination, // 하차지: 서울여대 누리관
+                    boarding: detail.exitInfo,
+                    alighting: detail.destination,
                     deadline: detail.deadline,
-                    recruitCount: String(detail.maxCount),
+                    recruitCount: String(detail.maxCount || ""),
                     price: detail.price.replace(/[^0-9]/g, ""),
                     description: detail.description,
+                    id: detail.id ?? taxiPotId,
                   };
                   setIsMenuOpen(false);
                   navigate("/add-taxi", {
@@ -192,14 +346,10 @@ export default function TaxiDetailScreen() {
                 게시글 수정
               </button>
 
-              {/* 게시글 삭제 */}
               <button
                 type="button"
                 className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
-                onClick={() => {
-                  console.log("게시글 삭제 클릭");
-                  setIsMenuOpen(false);
-                }}
+                onClick={handleDelete}
               >
                 게시글 삭제
               </button>

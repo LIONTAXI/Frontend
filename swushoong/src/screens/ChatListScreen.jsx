@@ -4,48 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import { getMyChatRooms, enterOrCreateChatRoom } from "../api/chat";
-import { setAuthToken } from "../api/token"; // 경로를 utils로 가정하여 수정
+import { setAuthToken } from "../api/token"; 
 
-// ==== 더미 데이터 정의 ====
-const DUMMY_CHAT_DATA = {
-    // API 연결 성공 시 matchingRooms에 대응
-    matchingRooms: [
-        {
-            chatRoomId: 101, // API 응답 필드
-            taxiPartyId: 1,  // 채팅방 입장에 사용될 ID (API 응답 필드)
-            title: '서울여대 50주년기념관 (Dummy)',
-            lastMessage: '테스트 더미: 이미 다들 모이셨을까요? 저 지금 지하철...',
-            lastMessageAt: '2025-12-08T11:48:00Z', // API 응답 시간 형식
-            closed: false, // isMatching을 위한 필드
-            hasUnread: true, // hasUnread를 위한 필드
-            avatarIcon: '🐙',
-        },
-    ],
-    // API 연결 성공 시 finishedRooms에 대응
-    finishedRooms: [
-        {
-            chatRoomId: 201,
-            taxiPartyId: 2,
-            title: '화랑대역 택시팟 (Dummy)',
-            lastMessage: '테스트 더미: 도착하셔서 수고하셨습니다!',
-            lastMessageAt: '2025-10-25T17:02:00Z',
-            closed: true, // 매칭 종료
-            hasUnread: false,
-            avatarIcon: '🚕',
-        },
-        {
-            chatRoomId: 202,
-            taxiPartyId: 3,
-            title: '별관 셔틀 승강장 (Dummy)',
-            lastMessage: '테스트 더미: 다음 주에 다시 팟 만들어볼까요?',
-            lastMessageAt: '2025-10-19T10:28:00Z',
-            closed: true,
-            hasUnread: false,
-            avatarIcon: '⭐',
-        },
-    ],
-};
-// =======================
 
 const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon, onClick }) => {
     // UI/CSS 변경 없음: 기존 코드 유지
@@ -76,14 +36,14 @@ const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon,
                     <p className={titleClasses}>
                         {title}
                     </p>
-                    {/* 안읽음 표시  */}
+                    {/* 안읽음 표시  */}
                     {hasUnread && (
                         <span className="block h-3 w-3 rounded-full bg-[#FC7E2A] flex-shrink-0"></span>
                     )}
                 </div>
 
                 <div className="flex justify-between items-center mt-0.5">
-                    {/* 마지막 메시지  */}
+                    {/* 마지막 메시지  */}
                     <p className={messageClasses}>
                         {lastMessage}
                     </p>
@@ -126,62 +86,27 @@ export default function ChatListScreen() {
         }
     };
     
-    // 채팅 목록 API 호출 함수 (API 통신 시뮬레이션 포함)
+    // 채팅 목록 API 호출 함수 (더미 데이터 사용 로직 제거)
     const fetchChatRooms = async () => {
         setLoading(true);
-        let apiSuccess = false;
-        let apiData = { matchingRooms: [], finishedRooms: [] }; // dummy 
 
         try {
-            // 1. API 실제 호출 시도
+            // 1. API 실제 호출
             const data = await getMyChatRooms();
             
-            //setMatchingChats(data.matchingRooms || []);
-            //setPastChats(data.finishedRooms || []);
+            // API 응답 구조에 따라 상태 업데이트
+            setMatchingChats(data.matchingRooms || []);
+            setPastChats(data.finishedRooms || []);
             
-            // API가 빈 배열을 반환해도, 통신은 성공으로 간주
-            apiSuccess = true; 
+            console.log("채팅 목록 로드 성공: API 데이터를 사용합니다.");
 
         } catch (error) {
             console.error("채팅 목록 로드 실패 (API 에러):", error.message);
             // API 호출 실패 시, 빈 상태로 둡니다.
-            //setMatchingChats([]);
-            //setPastChats([]);
-            apiSuccess = false;
+            setMatchingChats([]);
+            setPastChats([]);
         } finally {
-            const isDataEmpty = apiData.matchingRooms.length === 0 && apiData.finishedRooms.length === 0;
-
-    if (isDataEmpty || !apiSuccess) {
-        // 더미 데이터를 사용
-        console.log("데이터가 비어있거나 API 호출 실패: 더미 데이터를 사용하여 화면을 테스트합니다.");
-        setMatchingChats(DUMMY_CHAT_DATA.matchingRooms);
-        setPastChats(DUMMY_CHAT_DATA.finishedRooms);
-    } else {
-        // API에서 실제 데이터를 가져온 경우
-        setMatchingChats(apiData.matchingRooms);
-        setPastChats(apiData.finishedRooms);
-    }
-    
             setLoading(false);
-            
-            // 2. ⭐ 더미 데이터 표시 로직 (API 실패 또는 빈 데이터 반환 시 테스트를 위해) ⭐
-            // API가 성공했지만 데이터가 0개이거나 (data.matchingRooms.length === 0) 
-            // API 호출이 실패한 경우 (apiSuccess === false) 더미 데이터를 사용
-            
-            /*if (matchingChats.length === 0 && pastChats.length === 0 && !loading) {
-                // 주의: fetchChatRooms가 실행된 후 바로 matchingChats를 확인하면 이전 상태값이 반영될 수 있음.
-                // 그러나 여기서는 테스트를 위해 API 응답이 빈 경우를 가정하여 더미를 채워줍니다.
-                 if (apiSuccess && matchingChats.length === 0 && pastChats.length === 0) {
-                     console.log("API 호출 성공했으나 데이터가 비어있어 더미 데이터를 표시합니다.");
-                     setMatchingChats(DUMMY_CHAT_DATA.matchingRooms);
-                     setPastChats(DUMMY_CHAT_DATA.finishedRooms);
-                 } else if (!apiSuccess) {
-                     console.log("API 호출 실패로 인해 더미 데이터를 표시합니다.");
-                     setMatchingChats(DUMMY_CHAT_DATA.matchingRooms);
-                     setPastChats(DUMMY_CHAT_DATA.finishedRooms);
-                 }
-            }*/
-
         }
     };
 
@@ -200,13 +125,13 @@ export default function ChatListScreen() {
         try {
             const taxiPartyId = chat.taxiPartyId || chat.id;
             if (!taxiPartyId) {
-                 throw new Error("TaxiParty ID가 없습니다.");
+                throw new Error("TaxiParty ID가 없습니다.");
             }
             
             const response = await enterOrCreateChatRoom(taxiPartyId);
             const chatRoomId = response.chatRoomId;
             
-            navigate(`/chat/${chatRoomId}`);
+            navigate(`/chat/${chatRoomId}/${taxiPartyId}`);
             console.log(`채팅 ID ${chatRoomId} 상세 화면으로 이동합니다.`);
         } catch (error) {
             console.error("채팅방 입장 실패:", error);
@@ -259,8 +184,16 @@ export default function ChatListScreen() {
             {/* 채팅 목록 스크롤 영역 */}
             <main className="flex-1 min-h-0 overflow-y-auto pb-[393px]">
                 
+                {/* API 호출 실패 또는 데이터가 없는 경우 */}
+                {matchingChats.length === 0 && pastChats.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-48">
+                        <p className="text-body-regular-16 text-black-50">채팅방 목록이 비어 있습니다.</p>
+                        <p className="text-body-regular-14 text-black-40">새로운 택시팟에 참여하거나 생성해보세요!</p>
+                    </div>
+                )}
+
                 {/* 현재 매칭 중인 택시팟 섹션 */}
-                {matchingChats.length > 0 && (
+                {/*{matchingChats.length > 0 && (*/}
                     <section className="mt-0 mb-14">
                         <h2 className="text-head-semibold-20 text-[#000] px-4 py-2">지금 매칭중인 택시팟</h2>
                         <div>
@@ -278,7 +211,7 @@ export default function ChatListScreen() {
                             ))}
                         </div>
                     </section>
-                )}
+                {/*})}*/}
                 
                 {/* 지난 택시팟 섹션 */}
                 {pastChats.length > 0 && (
