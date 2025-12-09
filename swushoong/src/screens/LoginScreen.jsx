@@ -11,6 +11,7 @@ import EyeIcon from "../assets/icon/icon_eye.svg";
 
 // 로그인 API
 import { login } from "../api/auth";
+import { setAuthToken } from "../api/token";
 
 export default function LoginScreen() {
   const [showPw, setShowPw] = useState(false);
@@ -46,6 +47,20 @@ export default function LoginScreen() {
       setLoginError(false);
 
       const data = await login(email, password);
+
+      // ⭐ [수정] 토큰 추출 및 저장 로직 추가 시작 ⭐
+      // 서버 응답에서 토큰 필드명 확인 후 사용 (예: data.token 또는 data.accessToken)
+      const token = data.token || data.accessToken; 
+      
+      if (token) {
+          setAuthToken(token); // 로컬 스토리지에 토큰 저장
+          console.log("로그인 성공 및 토큰 저장 완료.");
+      } else {
+          // 토큰이 없으면 오류 처리
+          throw new Error("서버 응답에 인증 토큰이 포함되어 있지 않습니다.");
+      }
+      // ⭐ [수정] 토큰 추출 및 저장 로직 추가 끝 ⭐
+      
 
       navigate("/home");
     } catch (err) {

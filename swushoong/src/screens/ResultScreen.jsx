@@ -1,38 +1,115 @@
-import React from "react";
+// 정산 정보 확인 페이지 -> 정산 요청하기 -> 채팅방 복귀 
+
+import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-
-// 더미 데이터 정의 
-const DUMMY_FARE = 5000;
-
-const DUMMY_MEMBERS = [
-    { name: "임슈니 · 23 (나)", amount: 1250, isMe: true },
-    { name: "박슈니 · 23", amount: 1250, isMe: false },
-    { name: "이슈니 · 23", amount: 1250, isMe: false },
-    { name: "김슈니 · 21", amount: 1250, isMe: false },
-];
-
-const DUMMY_ACCOUNT = "슈니은행 393-401-4953";
+import { getSettlementDetails } from "../api/settlements";
+// 현재 로그인 유저 ID를 가져오는 함수 (host 판단에 사용)
+import { getCurrentUserId } from "../api/token";
 
 // 금액을 천 단위 콤마와 '원' 단위로 포맷팅하는 함수
 const formatCurrency = (amount) => {
+    if (typeof amount !== 'number' || isNaN(amount) || amount === null) return '0'; 
     return `${amount.toLocaleString()}`;
 };
-
 
 export default function ResultScreen() {
     const navigate = useNavigate();
     
-    // 합계 금액 계산
-    const totalPayment = DUMMY_MEMBERS.reduce((sum, member) => sum + member.amount, 0);
-    // 차액 계산
-    const difference = DUMMY_FARE - totalPayment; 
+    const [settlementData, setSettlementData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     
+    const currentUserId = getCurrentUserId(); // 현재 로그인한 사용자 ID
+    const chatRoomId = localStorage.getItem("currentChatRoomId");
+
+    // API 연결: 정산 상세 정보 불러오기
+    const loadSettlementDetails = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        
+        // 정산 ID를 로컬 스토리지에서 가져옴 (CountScreen에서 저장한 값)
+        const settlementId = localStorage.getItem("currentSettlementId"); 
+        
+        if (!settlementId) {
+            setError("❌ 정산 ID를 찾을 수 없습니다. (CountScreen에서 넘어오지 않음)");
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            // API 호출: 정산 상세 조회 (GET /api/settlements/{settlementId})
+            const data = await getSettlementDetails(parseInt(settlementId, 10));
+            setSettlementData(data);
+        } catch (err) {
+            const errorMessage = err.response?.message || "정산 정보를 불러오는 데 실패했습니다.";
+            console.error("❌ 정산 상세 조회 실패:", errorMessage, err);
+            setError(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        // 🚨 chatRoomId가 없으면 로딩을 멈추고 에러 표시
+        if (!chatRoomId) {
+            setError("❌ 채팅방 ID 정보가 누락되어 복귀할 수 없습니다.");
+            setIsLoading(false);
+            return;
+        }
+        loadSettlementDetails();
+    }, [loadSettlementDetails, chatRoomId]);
+
+    // 로딩 및 에러 상태 처리
+    if (isLoading) {
+        return <div className="text-center p-8 text-black-90">정산 정보를 불러오는 중...</div>;
+    }
+    if (error || !settlementData) {
+        return <div className="text-center p-8 text-red-500">{error || "정산 정보가 없습니다."}</div>;
+    }
+
+    // API 데이터 구조 분해
+    const { totalFare, bankName, accountNumber, participants } = settlementData;
+    
+    // UI에 맞게 데이터 가공
+    const displayFare = totalFare;
+    const displayAccount = `${bankName} ${accountNumber}`;
+    
+    const displayMembers = participants.map(p => {
+        const isMe = p.userId === currentUserId; // 현재 유저 ID와 비교
+        return {
+            ...p,
+            name: `${p.name} · ${p.shortStudentId} ${isMe ? '(나)' : ''}`, 
+            isMe: isMe,
+        }
+    });
+
+    // 합계 금액 계산
+    const totalPayment = displayMembers.reduce((sum, member) => sum + member.amount, 0);
+    // 차액 계산
+    const difference = displayFare - totalPayment; 
+    
+    // 정산 요청하기 버튼 클릭 핸들러 (채팅방 이동만 담당)
+    const handleRequestSettlement = () => {
+        const taxiPartyId = settlementData.taxiPartyId;
+
+        // 🚨 수정: taxiPartyId와 chatRoomId를 사용하여 정확한 채팅방 경로로 복귀
+        // 경로 형식: /chat/:chatRoomId/:partyId
+        const returnPath = `/chat/${chatRoomId}/${taxiPartyId}`;
+
+        navigate(returnPath, { 
+            state: { 
+                settlementCompleted: true, 
+                settlementId: settlementData.settlementId 
+            } 
+        });
+    };
+
     return (
         <div className="h-full w-full bg-white max-w-[393px] mx-auto font-pretendard flex flex-col"> 
             <Header title="정산 정보" />
 
-            {/* 2. 지불한 택시비 및 계좌 정보 (이미지 상단) */}
+            {/* 2. 지불한 택시비 및 계좌 정보*/}
             <div className="flex-col flex-grow w-full space-y-4 px-4 pb-8">
                 {/* 지불한 택시비 */}
                 <div className="space-y-1 mb-0">
@@ -47,7 +124,7 @@ export default function ResultScreen() {
             
                             {/* 금액 부분  */}
                             <span className="text-body-regular-16 text-black-90">
-                                {formatCurrency(DUMMY_FARE)} 
+                                {formatCurrency(displayFare)} 
                             </span>
             
                             {/* '원' 부분  */}
@@ -66,7 +143,7 @@ export default function ResultScreen() {
                     </p>
                     <div className="flex items-center self-stretch rounded p-4 bg-black-10">
                         <span className="text-body-regular-16 text-black-90">
-                            {DUMMY_ACCOUNT}
+                            {displayAccount}
                         </span>
                     </div>
                 </div>
@@ -81,10 +158,11 @@ export default function ResultScreen() {
 
                 {/* 멤버 리스트 */}
                 <div className="space-y-4">
-                    {DUMMY_MEMBERS.map((member, index) => (
-                        <div key={index} className="flex justify-between items-center">
+                    {displayMembers.map((member, index) => (
+                        <div key={member.userId || index} className="flex justify-between items-center">
                             {/* 프로필 이미지*/}
                             <div className="flex items-center gap-2">
+                                {/* member.imgUrl이 있다면 추가. 현재는 더미 배경색 유지 */}
                                 <div className={`w-10 h-10 rounded-full ${
                                     member.isMe ? 'border border-[#FC7E2A] bg-[#D6D6D6]' : 'bg-[#D6D6D6]'
                                 }`}></div>
@@ -126,7 +204,7 @@ export default function ResultScreen() {
             {/* 4. 정산 요청하기 버튼 (이미지 하단 고정) */}
             <div className="fixed bottom-10 z-10 w-full max-w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
                 <button 
-                    onClick={() => navigate("/chat/:chatId", { state: { settlementCompleted: true } })}
+                    onClick={handleRequestSettlement}
                     className="w-full h-14 p-3 bg-[#FC7E2A] text-white rounded justify-center items-center text-body-semibold-16"
                 >
                     정산 요청하기

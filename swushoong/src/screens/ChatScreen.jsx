@@ -1,480 +1,502 @@
 // src/pages/ChatScreen.jsx
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import Header from "../components/Header";
 import ChatBubble from "../components/ChatBubble";
-import ActionButton from "../components/ActionButton"; 
+import ActionButton from "../components/ActionButton"; 
 import ChatInput from "../components/ChatInput";
 import MatchInfo from "../components/MatchInfo";
 import MenuIcon from "../assets/icon/icon_menu.svg";
+import { closeTaxiParty, closeChatRoom, connectStomp, sendChatMessage, getChatHistory, getTaxiPartyInfo, sendImageMessage } from "../api/chat"; 
+import { getCurrentUserId } from "../api/token";
 
+const getUserIdFromAuth = () => {
+    // token.js의 getCurrentUserId를 호출하여 실제 ID 가져옴 
+    return getCurrentUserId();
+};
 
 // --- 메인 채팅 화면 컴포넌트 ---
 export default function ChatScreen() {
-    const navigate = useNavigate();
-    const location = useLocation();
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    //  isHost 상태 (참여자 테스트를 위해 false로 변경 가능)
-    const [isHost, setIsHost] = useState(true); // 총대슈니 (Host)
+    // URL 파라미터에서 ID를 가져옴(라우팅 설정 필요: /chat/:chatRoomId/:partyId)
+    const { chatRoomId: rawChatRoomId, partyId: rawPartyId } = useParams();
 
-    // 매칭 상태 (매칭 완료 여부) ('active' | 'ended')
-    const [matchStatus, setMatchStatus] = useState('active'); 
+    const chatRoomId = parseInt(rawChatRoomId, 10) || 0; 
+    const partyId = parseInt(rawPartyId, 10) || 0;
 
-    //  메시지 필터링 
-    const chatMessages = initialMessages.filter(msg => msg.type !== 'endMatchButton');
-    const [messages, setMessages] = useState(chatMessages);
+    // 현재 사용자 ID를 인증 상태에서 가져옴 
+    const currentUserId = getUserIdFromAuth();
+    
+    // 상태 관리
+    const [isHost, setIsHost] = useState(false); 
+    const [isLoading, setIsLoading] = useState(true);
+    const [matchInfo, setMatchInfo] = useState(null); // 택시팟 정보를 담을 상태
+    const [matchStatus, setMatchStatus] = useState('active'); 
+    const [messages, setMessages] = useState([]);
+    const [isSettled, setIsSettled] = useState(false);
+    const [isSettlementEntered, setIsSettlementEntered] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    // 정산 상태 (정산 완료 여부) 
-    const [isSettled, setIsSettled] = useState(false);
+    // STOMP 클라이언트 참조
+    const stompClientRef = useRef(null);
+    const chatContainerRef = useRef(null);
+    const isConnectingRef = useRef(false);
 
-    // 정산 정보 입력 페이지로 이동했는지 여부
-    const [isSettlementEntered, setIsSettlementEntered] = useState(false);
 
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    // 유효성 검사 실패 시 (ID 누락, 비로그인 상태) 로딩 화면/경고 표시
+    if (!currentUserId || chatRoomId <= 0 || partyId <= 0) {
+        console.error("FATAL ERROR: 필수 ID 또는 사용자 인증 상태가 유효하지 않습니다.");
 
-    const wsRef = useRef(null);
-    const chatContainerRef = useRef(null);
+        if (!currentUserId) return <div className="p-4 text-red-500">로그인 상태를 확인해 주세요.</div>;
+        return <div className="p-4 text-red-500">유효하지 않은 채팅방/파티 ID입니다.</div>;
+    }
+    
+    // --- 헬퍼 함수: 서버 응답을 UI 메시지 형식으로 변환 ---
+    const formatMessage = (data) => {
+        // 서버 응답 예시: { "messageId": 10, "senderId": 3, "name": "이슈니", "shortStudentId": "23", "content": "...", "sentAt": "2025-11-10T19:20:00" }
+        const isMyMessage = data.senderId === currentUserId; 
 
-    // 메뉴 열기 함수
-    const handleOpenMenu = () => {
-        setIsMenuOpen(true);
+        if (!isMyMessage) {
+        console.log("상대방 메시지 데이터 수신 확인:", { 
+            senderId: data.senderId, 
+            name: data.name, 
+            shortStudentId: data.shortStudentId 
+        });
+        }
+
+        return {
+            id: data.messageId || Date.now(),
+            side: isMyMessage ? 'right' : 'left',
+            type: 'text',
+            name: isMyMessage ? '나' : data.name,
+            age: data.shortStudentId,
+            text: data.content,
+            time: new Date(data.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(data.sentAt).getTime(),
+        };
+    };
+
+    // STOMP 메시지 수신 처리 함수
+    const handleStompMessage = useCallback((data) => {
+        if (data.type === 'system-connect') {
+            setMessages((prev) => [...prev, {
+                id: Date.now(),
+                type: 'system',
+                text: data.content,
+                timestamp: new Date().getTime(),
+            }]);
+            return;
+        }
+        
+        const receivedMessage = formatMessage(data);
+
+        setMessages((prev) => [...prev, receivedMessage]);
+    }, [currentUserId]); // currentUserId가 변경될 때마다 재생성
+
+    // 메뉴 닫기 및 열기 함수 
+    const handleOpenMenu = () => { setIsMenuOpen(true); };
+    const handleCloseMenu = () => { setIsMenuOpen(false); };
+
+    // '택시팟 끝내기' 메뉴 항목 클릭 핸들러 (최종 종료 API 호출)
+    const handleCloseChatRoom = async () => {
+        handleCloseMenu();
+
+        if (isSettled && isHost && chatRoomId) {
+            try {
+                await closeChatRoom(chatRoomId); 
+                console.log(`채팅방 ${chatRoomId} 최종 종료 성공.`);
+                navigate('/review-member');
+            } catch (error) {
+                console.error("택시팟 최종 종료 실패:", error);
+                alert(`택시팟 최종 종료 실패: ${error.message || '알 수 없는 오류'}`);
+            }
+        } else {
+            console.log("택시팟 최종 종료 조건 미충족 또는 참여자입니다.");
+        }
+    };
+
+    const navigateToSettlement = (targetPath) => {
+        handleCloseMenu();
+        
+        // CountScreen이 필요로 하는 필수 정보만 state에 담아 전달
+        const settlementData = {
+            taxiPartyId: partyId, // 🚨 수정: URL 파라미터의 partyId를 taxiPartyId로 전달
+            isHost: isHost,       // Host 여부 전달
+            isSettlementEntered: isSettlementEntered,
+            // participants 목록은 CountScreen이 API로 직접 조회합니다.
+        };
+
+        navigate(targetPath, { state: settlementData });
     };
 
-    // 메뉴 닫기 함수
-    const handleCloseMenu = () => {
-        setIsMenuOpen(false);
-    };
 
-    // TODO: 실제 페이지 이동 로직으로 변경 필요
-    const hostMenuItems = [
-        { label: '시용자 목록', onClick: () => {
-            // navigate('/member-profile'); 
-        }},
-        { 
+    // 메뉴 항목 정의 
+    const hostMenuItems = [
+        { label: '시용자 목록', onClick: () => { handleCloseMenu(); /* navigate('/member-profile') */ }},
+        {  
             label: isSettlementEntered ? '정산 현황' : '정산 정보 입력', 
-            onClick: () => {
-                // navigate(isSettlementEntered ? '/please' : '/confirm'); // 정산 현황/입력 페이지로 이동
-                console.log(`방장: ${isSettlementEntered ? '정산 현황' : '정산 정보 입력'} 페이지로 이동`);
-            },
+            onClick: () => { 
+                const path = isSettlementEntered ? '/please' : '/confirm';
+                navigateToSettlement(path);
+            }
         },
-        { 
-            label: '택시팟 끝내기', 
-            onClick: () => {
-                //
-            },
-        },
-    ];
-
+        { label: '택시팟 끝내기', onClick: handleCloseChatRoom },
+    ];
     const memberMenuItems = [
-        { label: '사용자 목록', onClick: () => {
-            // navigate('/member-profile'); 예시 경로
-        }},
+        { label: '사용자 목록', onClick: () => { handleCloseMenu(); /* navigate('/member-profile') */ }},
     ];
-
-    // 정산 정보 입력 완료 시 '정산 정보' 메뉴 항목 추가
     if (isSettlementEntered) {
-        // '사용자 목록' 다음에 '정산 정보'를 추가
         memberMenuItems.splice(1, 0, {
-             label: '정산 정보', 
-             onClick: () => {
-                // navigate('/view-settlement-info'); 
-                console.log("참여자: 정산 정보 보기로 이동");
-             }
+            label: '정산 정보', 
+            onClick: () => { navigateToSettlement('/current-pay-member'); /* navigate('/view-settlement-info') */ }
+        });
+    }
+    const menuItems = isHost ? hostMenuItems : memberMenuItems;
+
+
+    // 스크롤을 항상 가장 아래로 이동시키는 함수
+    const scrollToBottom = () => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    };
+
+    // ------------------------------------------------------------------
+    // 초기 로딩 및 STOMP 연결 로직 (chatRoomId, currentUserId 의존)
+    // ------------------------------------------------------------------
+    useEffect(() => {
+        if (!currentUserId || chatRoomId <= 0 || partyId <= 0) {
+            console.error("채팅방 ID 또는 사용자 ID가 유효하지 않아 연결을 시도할 수 없습니다.");
+            setIsLoading(false);
+            return; 
+        }
+
+        if (isConnectingRef.current) {
+        console.log("STOMP 연결 시도 중: 중복 호출 무시.");
+        return; 
+    }
+
+        // 🚨 1단계: 새로운 연결을 시도하기 전에 기존 연결이 있으면 확실히 종료합니다.
+    if (stompClientRef.current && stompClientRef.current.connected) {
+        console.log("기존 STOMP 연결을 정리합니다.");
+        stompClientRef.current.deactivate();
+        stompClientRef.current = null;
+    }
+
+    isConnectingRef.current = true; // 연결 시도 시작
+    console.log("✅ STOMP 연결 시도 시작");
+
+        // 1. 과거 메시지 로드 (API 호출)
+        const loadChatHistory = async () => {
+            try {
+                const partyInfo = await getTaxiPartyInfo(partyId, currentUserId);
+                setIsHost(partyInfo.hostId === currentUserId);
+                setMatchInfo(partyInfo);
+
+                const historyData = await getChatHistory(chatRoomId);
+                console.log("채팅 기록 로드 성공:", historyData);
+                const formattedHistory = historyData.map(formatMessage);
+                setMessages(formattedHistory);
+
+                const stompClient = connectStomp(chatRoomId, handleStompMessage);
+                stompClientRef.current = stompClient;
+
+            } catch (error) {
+                console.error("채팅 기록 로드 실패:", error);
+                alert(`채팅방 로드 실패: ${error.response?.message || '서버 오류'}`);   
+            } finally {
+                setIsLoading(false);
+            isConnectingRef.current = false; // 연결 시도 완료
+            console.log("✅ STOMP 연결 시도 완료");
+            }
+        };
+
+        loadChatHistory();
+
+        // 컴포넌트 언마운트 시 STOMP 연결 종료
+        // 🚨 2단계: 언마운트 시 정리 로직 (기존 로직 유지)
+    return () => {
+        if (stompClientRef.current && stompClientRef.current.connected) {
+            console.log("컴포넌트 언마운트 시 STOMP 연결 종료");
+            stompClientRef.current.deactivate();
+        }
+    };
+    }, [chatRoomId, partyId, currentUserId, handleStompMessage]);
+
+
+    // 메시지 상태가 업데이트될 때마다 스크롤
+    useEffect(() => {
+    // DOM 업데이트가 완료된 후 스크롤이 실행되도록 짧은 딜레이를 줍니다.
+    const timer = setTimeout(() => {
+        scrollToBottom();
+    }, 0); // 딜레이를 0ms로 설정해도 비동기적으로 실행되어 DOM 업데이트를 기다리는 효과가 있습니다.
+
+    return () => clearTimeout(timer);
+}, [messages]);
+
+
+    // 정산 완료 상태를 확인하고 처리하는 useEffect (기존 로직 유지)
+    useEffect(() => {
+        const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
+        if (location.state && location.state.settlementCompleted) {
+            setMatchStatus('ended');
+            setIsSettlementEntered(true);
+            setMessages(prev => {
+                const isDuplicate = prev.length > 0 && prev[prev.length - 1].type === 'system' && prev[prev.length - 1].text === SETTLEMENT_COMPLETE_MESSAGE;
+                if (isDuplicate) return prev; 
+                return [ ...prev, { id: Date.now(), type: 'system', text: SETTLEMENT_COMPLETE_MESSAGE, timestamp: Date.now() }];
+            });
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location, navigate, setMessages]); 
+
+    // 최종 정산 완료 상태 처리 (기존 로직 유지)
+    useEffect(() => {
+        if (location.state && location.state.isSettled) {
+            console.log("🔥 모든 정산이 최종 완료되었습니다. isSettled 상태 업데이트.");
+            setMatchStatus('ended');
+            setIsSettlementEntered(true);
+            setIsSettled(true);
+            navigate(location.pathname, { replace: true, state: {} }); 
+        }
+    }, [location, navigate]);
+
+    // 메시지 전송 핸들러
+    const handleSendMessage = useCallback((text) => {
+        if (!chatRoomId || !currentUserId) {
+            console.error("채팅방 또는 사용자 ID가 유효하지 않아 메시지 전송 불가");
+            return;
+        }
+        sendChatMessage(stompClientRef.current, chatRoomId, text, currentUserId);
+    }, [chatRoomId, currentUserId]);
+
+    // 💡 이미지 파일 선택 핸들러
+const handleFileSelect = useCallback(async (file) => {
+    if (!chatRoomId || !currentUserId || !partyId) {
+        console.error("채팅방, 파티 ID 또는 사용자 ID가 유효하지 않아 파일 전송 불가");
+        return;
+    }
+    if (!file) return;
+
+    // 💡 전송 중 시스템 메시지 추가 (선택 사항)
+    const tempMessageId = Date.now();
+    setMessages((prev) => [...prev, {
+        id: tempMessageId,
+        type: 'system',
+        text: `사진(${file.name}) 전송을 시도합니다...`,
+        timestamp: Date.now(),
+    }]);
+
+    try {
+        // 1. 파일을 서버에 업로드하고 메시지 전송 요청
+        // sendImageMessage 함수는 chat.js에 추가한 API 함수를 사용합니다.
+        const response = await sendImageMessage(file, partyId, currentUserId, chatRoomId);
+        
+        console.log("이미지 전송 요청 성공:", response);
+
+        // 2. 서버가 웹소켓으로 실제 메시지를 다시 보낼 때까지 기다립니다.
+        // 여기서는 임시 시스템 메시지를 제거하거나 성공 메시지로 교체할 필요는 없습니다. 
+        // 서버에서 웹소켓을 통해 최종 메시지 (텍스트 또는 이미지)를 돌려주면
+        // handleStompMessage 콜백이 이를 처리할 것입니다.
+
+    } catch (error) {
+        console.error("이미지 전송 실패:", error);
+        
+        // 💡 전송 실패 시 시스템 메시지 업데이트 또는 실패 메시지 추가
+        setMessages((prev) => {
+            // 임시 시스템 메시지 제거 시도 (선택 사항)
+            const filtered = prev.filter(msg => msg.id !== tempMessageId);
+            return [...filtered, {
+                id: Date.now() + 1,
+                type: 'system',
+                text: `사진 전송 실패: ${error.message || '알 수 없는 오류'}`,
+                timestamp: Date.now(),
+            }];
         });
     }
 
-    const menuItems = isHost ? hostMenuItems : memberMenuItems;
-
-    // TODO: 실제 백엔드 로직에 따라 handleBack 함수 구현 필요
-    const handleBack = () => {
-        console.log("뒤로가기 버튼 클릭");
-        navigate(-1);
-    };
-
-    // 스크롤을 항상 가장 아래로 이동시키는 함수
-    const scrollToBottom = () => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-    };
-
-    // WebSocket 연결 설정
-    useEffect(() => {
-        // TODO: 실제 WebSocket 서버 URL로 변경
-        const WS_URL = "ws://localhost:8080/taxi-chat";
-        
-        wsRef.current = new WebSocket(WS_URL);
-
-        wsRef.current.onopen = () => {
-            console.log("WebSocket 연결 성공");
-            // 연결 성공 시 시스템 메시지 추가 예시
-            setMessages((prev) => [...prev, {
-                id: Date.now(),
-                type: 'system',
-                text: '채팅방에 연결되었습니다.',
-                timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-            }]);
-        };
-
-        wsRef.current.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            // TODO: 수신된 메시지 형식에 따라 파싱 및 setMessages 호출
-            console.log("메시지 수신:", data);
-        };
-
-        wsRef.current.onclose = () => {
-            console.log("WebSocket 연결 종료");
-        };
-
-        wsRef.current.onerror = (error) => {
-            console.error("WebSocket 오류:", error);
-        };
-
-        // 컴포넌트 언마운트 시 WebSocket 연결 종료
-        return () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-            }
-        };
-    }, []);
-
-    // 메시지 상태가 업데이트될 때마다 스크롤
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+}, [chatRoomId, partyId, currentUserId]); // 의존성 배열 유지
 
 
 
-    // 정산 완료 상태를 확인하고 처리하는 useEffect
-    useEffect(() => {
-        const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
 
-        if (location.state && location.state.settlementCompleted) {
-            console.log("정산 페이지에서 정산 완료 상태를 수신했습니다.");
-            
-            setMatchStatus('ended');
+    // 매칭 종료 버튼 클릭 핸들러
+    const handleEndMatch = async () => {
+        if (matchStatus === 'active' && isHost && partyId && currentUserId) {
+            try {
+                // 🚨 partyId와 currentUserId 사용
+                await closeTaxiParty(partyId, currentUserId);
+                console.log(`매칭 파티 ${partyId} 종료 API 호출 성공.`);
 
-            setIsSettlementEntered(true);
+                setMatchStatus('ended');
+                const DELAY_MS = 5000;
+                setTimeout(() => {
+                    setMessages((prev) => [...prev, {
+                        id: Date.now() + 1,
+                        type: 'system', 
+                        text: '목적지에 도착했다면\n총대슈니는 정산정보를 입력해 주세요', 
+                        timestamp: Date.now(),
+                    }]);
+                }, DELAY_MS); 
 
-        setMessages(prev => {
-            const isDuplicate = prev.length > 0 && 
-                                prev[prev.length - 1].type === 'system' &&
-                                prev[prev.length - 1].text === SETTLEMENT_COMPLETE_MESSAGE;
+            } catch (error) {
+                console.error("매칭 종료 실패:", error);
+                alert(`매칭 종료 실패: ${error.response?.message || '총대슈니만 종료할 수 있습니다.'}`);
+            }
 
-            if (isDuplicate) {
-                console.log("시스템 메시지 중복 추가 방지됨.");
-                return prev; // 중복이면 상태 변경 없이 이전 상태 반환
+        } else if (isSettled && isHost) { 
+            handleCloseChatRoom();
+
+        } else if (matchStatus === 'ended') {
+            let targetPath; 
+
+            if (isSettlementEntered) {
+                targetPath = isHost ? '/please' : '/current-pay-member';
+            } else if (isHost) {
+                targetPath = '/confirm';
             }
             
-            // 중복이 아니면 새 메시지 추가
-            return [
-                ...prev, 
-                {
-                    id: Date.now(), 
-                    type: 'system', 
-                    text: SETTLEMENT_COMPLETE_MESSAGE, 
-                    timestamp: Date.now()
-                }
-            ];
-        });
-
-          navigate(location.pathname, { replace: true, state: {} });
-        }
-    }, [location, navigate, setMessages]); // location.state가 변경될 때마다 실행
-
-    // 최종 정산 완료 상태 처리
-    useEffect(() => {
-        if (location.state && location.state.isSettled) {
-            console.log("🔥 모든 정산이 최종 완료되었습니다. isSettled 상태 업데이트.");
-
-            setMatchStatus('ended');
-            setIsSettlementEntered(true);
-
-            setIsSettled(true);
-
-            navigate(location.pathname, { replace: true, state: {} }); // state 제거
-        }
-    }, [location, navigate]);
-
-    // 메시지 전송 핸들러
-    const handleSendMessage = useCallback((text) => {
-        const newMessage = {
-            id: Date.now(),
-            side: 'right',
-            type: 'text',
-            name: '나', 
-            age: '23', 
-            text: text,
-            time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-            timestamp: Date.now(),
-        };
-
-        // UI에 즉시 반영
-        setMessages((prev) => [...prev, newMessage]);
-
-        // WebSocket을 통해 서버로 전송
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            const messageToSend = JSON.stringify({
-                // TODO: 서버에서 필요한 메시지 형식으로 구성
-                type: 'chat',
-                content: text,
-                sender: 'my_user_id', 
-            });
-            wsRef.current.send(messageToSend);
-        } else {
-            console.error("WebSocket 연결이 끊어졌거나 준비되지 않았습니다.");
-        }
-    }, []);
-
-    // 카메라 버튼 클릭 핸들러 (TODO: 갤러리/카메라 이동 흐 사진 전송 기능 구현 필요)
-    const handleCameraClick = () => {
-        console.log("카메라 버튼 클릭 - 사진 전송 기능 구현 필요");
-    };
-
-    // 매칭 종료 버튼 클릭 핸들러
-    const handleEndMatch = () => {
-        if (matchStatus === 'active') {
-            console.log("매칭 종료 처리 및 상태 변경");
-            setMatchStatus('ended');
-
-            // 알림 메시지 지연 발송 시뮬레이션 (서버 역할 흉내)
-            const DELAY_MS = 5000; // 테스트 편의를 위해 5초(5000ms)로 단축 (300000ms 대신)
-            console.log(`알림 메시지 발송을 ${DELAY_MS / 1000}초 지연합니다 (서버 역할 시뮬레이션)`);
-            
-            const delayedMessageTimeout = setTimeout(() => {
-                console.log('5분 지연 후, 시스템 메시지 수신 (서버로부터의 WebSocket 수신 시뮬레이션)');
-            
-                setMessages((prev) => [...prev, {
-                    id: Date.now() + 1,
-                    type: 'system', 
-                    text: '목적지에 도착했다면\n총대슈니는 정산정보를 입력해 주세요', 
-                    timestamp: Date.now(),
-                }]);
-            }, DELAY_MS); 
-
-        } else if (isSettled && isHost) { // 최종 정산 완료 후, 방장만 '택시팟 종료하기' 클릭 시
-            console.log("택시팟 최종 종료 및 채팅방 나가기 처리");
-            // TODO: 최종 종료 API 호출 후, 채팅 목록 페이지로 navigate
-            navigate('/review-member'); 
-        } else if (matchStatus === 'ended') {
-            if (isSettlementEntered) {
-                // isHost 여부에 따라 분리
-                if (isHost) {
-                    console.log("방장: 정산 현황 페이지로 이동 (정산 현황 보기)");
-                    navigate('/please'); // 방장은 기존 정산 현황 경로
-                } else {
-                    // 참여자 전용 페이지 경로 설정
-                    console.log("참여자: 정산 정보 보기 페이지로 이동 (정산 정보 보기)");
-                    navigate('/view-settlement-info'); // 👈 참여자 전용 경로 (새로 정의)
-                }     
-            } else {
-                // 정산 정보 입력 전 (방장 전용)
-                console.log("정산 정보 입력 페이지로 이동");
-                navigate('/confirm'); 
+            if (targetPath) {
+                navigateToSettlement(targetPath); // 💡 수정: 정산 페이지로 이동
             }
         }
     };
 
+    // 렌더링 (기존 로직 유지)
+    return (
+        <div className={`${isMenuOpen ? 'overflow-hidden' : 'overflow-y-auto'} relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col`}>
+            <div className="flex flex-col flex-grow w-full pt-[14px]"></div>
+            <Header 
+                title="택시팟 채팅" 
+                onBack={() => navigate(-1)} 
+                rightIcon={MenuIcon} 
+                onRightClick={() => setIsMenuOpen(true)}
+            />
 
-    console.log(`[DEBUG] isHost: ${isHost}, matchStatus: ${matchStatus}, isSettlementEntered: ${isSettlementEntered}, isSettled: ${isSettled}`);
 
-    // 렌더링
-    return (
-        <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
-            <Header 
-                title="택시팟 채팅" 
-                onBack={handleBack} 
-                rightIcon={MenuIcon} // 메뉴 아이콘 표시
-                onRightClick={() => setIsMenuOpen(true)} // 클릭 시 메뉴 열기
-            />
-
-            <div className="flex flex-col flex-grow w-full">
-                {/* 1. 매칭 정보 섹션 */}
-                <div className="w-full flex justify-center py-4"> 
-                    <MatchInfo
-                        destination="서울여대 누리관"
-                        departureIcon="🍄"
-                        departure="태릉입구 7번출구"
-                        departureTime="14:50"
-                        members="2/4"
-                        estimatedFare="5,000원"
-                    />
-                </div>
-                
-                {/* 2. 채팅 메시지 목록 */}
-                <div 
-                    ref={chatContainerRef}
-                    className="flex-grow p-4 overflow-y-auto pb-[130px]"
-                >
-                    {messages.map((msg, index) => {
-                        // 날짜 구분선 표시 로직
-                        const isNewDay = index === 0 || 
-                            new Date(messages[index - 1].date || '2025.11.10').toDateString() !== new Date(msg.date || '2025.11.10').toDateString();
-
-                        // 날짜/시간 구분선 렌더링 (ChatBubble을 호출하지 않음)
-                        const isSeparator = msg.type === 'dateSeparator' || msg.type === 'timeSeparator';
-
-                        // 시스템 메시지 직접 렌더링 로직 (ChatBubble 충돌 방지)
-                        const isSystem = msg.type === 'system';
-
-                        return (
-
-                            <React.Fragment key={msg.id}>
-                                {/* 날짜 구분선 */}
-                                {isNewDay && (
-                                    <div className="w-full flex justify-center my-4">
-                                        <span className="text-body-regular-14 text-black-70">
-                                            {msg.date || new Date(msg.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\./g, '. ')}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* 시간 구분선 */}
-                                {(msg.type === 'timeSeparator') && (
-                                    <div className="w-full flex justify-center mt-[-20px] mb-4">
-                                        <span className="text-body-regular-14 text-black-70">
-                                            {msg.time}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* 시스템 메시지 직접 렌더링 */}
-                                {isSystem && (
-                                    <div className="w-full flex justify-center my-4">
-                                        <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 
-                                                         text-black-90 text-center leading-[1.4] whitespace-pre-line">
-                                            {msg.text}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* ChatBubble 컴포넌트 렌더링 */}
-                                {!isSeparator && !isSystem && (
-                                    <ChatBubble
-                                        side={msg.side}
-                                        variant={msg.type || 'text'} 
-                                        text={msg.text}
-                                        time={msg.time}
-                                        name={msg.name}
-                                        age={msg.age}
-                                        avatarUrl={msg.avatarUrl}
-                                        className="my-3"
-                                    />
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
-                
-                        {/* 스크롤 가능한 콘텐츠의 맨 아래 여백 확보 */}
-                        <div className="h-10"></div>
-                    </div>
-
-                    <div className="fixed bottom-0 z-10 w-[393px] left-1/2 -translate-x-1/2 bg-white">
-                        {/* ActionButton (고정됨) */}
-                            <ActionButton 
-                                status={matchStatus} 
-                                onClick={handleEndMatch} 
-                                isHost={isHost}
-                                isSettlementEntered={isSettlementEntered}
-                                isSettled={isSettled}
-                            />
-
-                        {/* 채팅 입력창 (고정됨) */}
-                        <div className="border-t border-black-10">
-                            <ChatInput onSend={handleSendMessage} onCameraClick={handleCameraClick}/> 
-                        </div>
-                    </div>
-                </div>
-
-                {isMenuOpen && (
-                <div
-                    className="absolute inset-0 z-50 flex justify-center items-end bg-black-90 bg-opacity-70"
-                    onClick={handleCloseMenu} // 외부 클릭 시 닫기
-                >
-                    <div
-                        className="w-full max-w-[393px] mx-auto bg-white rounded-t-[20px] pt-3 pb-8 relative"
-                        onClick={(e) => e.stopPropagation()} // 메뉴 내부 클릭 시 버블링 방지
-                    >
-                        {/* 상단 닫기 핸들 */}
-                        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mb-5" />
-
-                        <h2 className="px-4 text-head-semibold-20 text-black-90 mt-4 mb-4">
-                            메뉴
-                        </h2>
-
-                        <div className="flex flex-col">
-                            {/* 메뉴 항목 리스트 렌더링 */}
-                            {menuItems.map((item, index) => (
-                                <button
-                                    key={index}
-                                    type="button"
-                                    className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
-                                    onClick={item.onClick}
-                                >
-                                    {item.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+            {/* 로딩 스피너 및 오류 처리 */}
+            {isLoading && (
+                <div className="flex flex-grow justify-center items-center text-body-regular-16 text-black-70">
+                    채팅방 정보를 불러오는 중입니다... 🔄
                 </div>
             )}
-        </div>
-    );
+            
+            {!isLoading && matchInfo && (
+                <div className="flex flex-col flex-grow w-full">
+                    {/* 1. 매칭 정보 섹션 (API 데이터 사용) */}
+                    <div className="w-full flex justify-center py-4"> 
+                        <MatchInfo
+                            destination={matchInfo.destination}
+                            departureIcon="🍄" 
+                            departure={matchInfo.departure}
+                            departureTime={matchInfo.meetingTime}
+                            //members={`${matchInfo.currentParticipants}/${matchInfo.maxParticipants}`}
+                            currentParticipants={matchInfo.currentParticipants}
+                            maxParticipants={matchInfo.maxParticipants}
+                            estimatedFare={`${matchInfo.expectedPrice.toLocaleString()}원`}
+                        />
+                    </div>
+                
+                {/* 2. 채팅 메시지 목록 */}
+                <div 
+                    ref={chatContainerRef}
+                    className={`flex-grow p-4 pb-[130px] ${isMenuOpen ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                >
+                    {messages.map((msg, index) => {
+                        const currentMsgDate = new Date(msg.timestamp || Date.now()).toDateString();
+                        const prevMsgDate = index > 0 ? new Date(messages[index - 1].timestamp || 0).toDateString() : '';
+                        const isNewDay = index === 0 || currentMsgDate !== prevMsgDate;
+                        const isSeparator = msg.type === 'dateSeparator' || msg.type === 'timeSeparator';
+                        const isSystem = msg.type === 'system';
+
+                        return (
+                            <React.Fragment key={msg.id}>
+                                {/* 날짜 구분선 */}
+                                {isNewDay && !isSystem && (
+                                    <div className="w-full flex justify-center my-4">
+                                        <span className="text-body-regular-14 text-black-70">
+                                            {new Date(msg.timestamp).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\./g, '. ')}
+                                        </span>
+                                    </div>
+                                )}
+                                {isSystem && (
+                                    <div className="w-full flex justify-center my-4">
+                                        <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 
+                                                         text-black-90 text-center leading-[1.4] whitespace-pre-line">
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                )}
+                                {!isSeparator && !isSystem && (
+                                    <ChatBubble
+                                        side={msg.side}
+                                        variant={msg.type || 'text'} 
+                                        text={msg.text}
+                                        time={msg.time}
+                                        name={msg.name}
+                                        age={msg.age}
+                                        avatarUrl={msg.avatarUrl}
+                                        className="my-3"
+                                    />
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                
+                        <div className="h-10"></div>
+                    </div>
+
+                    <div className="fixed bottom-0 z-10 w-[393px] left-1/2 -translate-x-1/2 bg-white">
+                        {/* ActionButton */}
+                            <ActionButton 
+                                status={matchStatus} 
+                                onClick={handleEndMatch} 
+                                isHost={isHost}
+                                isSettlementEntered={isSettlementEntered}
+                                isSettled={isSettled}
+                            />
+
+                        {/* 채팅 입력창 */}
+                        <div className="border-t border-black-10">
+                            <ChatInput onSend={handleSendMessage} 
+                                onCameraClick={() => console.log("카메라 클릭")}
+                                onFileSelect={handleFileSelect}
+                            /> 
+                        </div>
+                    </div>
+                </div>
+            )}
+
+                {/* 메뉴 모달 */}
+                {isMenuOpen && (
+                <div
+                    className="absolute inset-0 z-50 flex justify-center items-end bg-black-90 bg-opacity-70"
+                    onClick={handleCloseMenu} 
+                >
+                    <div
+                        className="w-full max-w-[393px] mx-auto bg-white rounded-t-[20px] pt-3 pb-8 relative"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mb-5" />
+                        <h2 className="px-4 text-head-semibold-20 text-black-90 mt-4 mb-4"> 메뉴 </h2>
+                        <div className="flex flex-col">
+                            {menuItems.map((item, index) => (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
+                                    onClick={item.onClick}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
-
-// -----------------------------------------------------
-// 더미 데이터
-// 실제로는 서버에서 받아오거나 WebSocket을 통해 실시간으로 추가될 것 
-const initialMessages = [
-    { id: 1, type: 'dateSeparator', date: '2025.11.10' }, 
-    { id: 2, type: 'timeSeparator', time: '19:20' }, 
-
-    // 왼쪽(상대방) 메시지: 임슈니 
-    {
-        id: 3,
-        side: 'left',
-        type: 'text',
-        name: '임슈니',
-        age: '23',
-        text: '혹시 지금 어디 계신가요?',
-        time: '12:03',
-        timestamp: new Date('2025/11/10 12:03:00').getTime(),
-    },
-
-    // 오른쪽(나) 메시지: 나
-    {
-        id: 4,
-        side: 'right',
-        type: 'text',
-        name: '나',
-        age: '23',
-        text: '저는 지금 태릉입구역 1번출구예요! 지금 7번출구로 가고있어요!',
-        time: '12:03',
-        timestamp: new Date('2025/11/10 12:03:00').getTime() + 1, // 시간만 동일하게
-    },
-
-    // 왼쪽(상대방) 메시지: 김슈니
-    {
-        id: 5,
-        side: 'left',
-        type: 'text',
-        name: '김슈니',
-        age: '23',
-        text: '혹시 지금 어디 계신가요?',
-        time: '12:03',
-        timestamp: new Date('2025/11/10 12:03:00').getTime() + 2,
-    },
-
-    // 왼쪽(상대방) 메시지: 이슈니
-    {
-        id: 6,
-        side: 'left',
-        type: 'text',
-        name: '이슈니',
-        age: '21',
-        text: '혹시 지금 어디 계신가요?',
-        time: '12:03',
-        timestamp: new Date('2025/11/10 12:03:00').getTime() + 3,
-    },
-];

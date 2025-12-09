@@ -41,6 +41,8 @@ import ReviewArriveScreen from "./screens/ReviewArriveScreen";
 import ReviewMemberScreen from "./screens/ReviewMemberScreen";
 import ReviewSwuScreen from "./screens/ReviewSwuScreen";
 
+import ReviewAllScreen from "./screens/ReviewAllScreen";
+
 export default function App() {
   return (
     <div className="min-h-screen w-full bg-black-10 flex justify-center items-start">
@@ -64,7 +66,7 @@ export default function App() {
 
           {/* === 채팅 === */}
           <Route path="/chat-list" element={<ChatListScreen/>} />
-          <Route path="/chat/:chatId" element={<ChatScreen/>} />
+          <Route path="/chat/:chatRoomId/:partyId" element={<ChatScreen/>} />
 
           {/* === 정산 === */}
           <Route path="/confirm" element={<CountScreen/>} /> 
@@ -78,7 +80,9 @@ export default function App() {
           <Route path="/review-member" element={<ReviewMemberScreen />} />   
           <Route path="/review-swu" element={<ReviewSwuScreen />} />  
           <Route path="/review" element={<ReviewScreen />} />  
-          <Route path="/review-arrive" element={<ReviewArriveScreen />} />  
+          <Route path="/review-arrive" element={<ReviewArriveScreen />} /> 
+
+          <Route path="/review-all/:taxiPartyId/:revieweeId" element={<ReviewAllScreen />} />
 
           <Route path="/home" element={<HomeScreen />} />
           <Route path="/add-taxi" element={<AddTaxiScreen />} />
