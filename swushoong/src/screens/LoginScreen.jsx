@@ -9,6 +9,9 @@ import BtnLong from "../components/BtnLong";
 import BlindIcon from "../assets/icon/icon_blind.svg";
 import EyeIcon from "../assets/icon/icon_eye.svg";
 
+// 로그인 API
+import { login } from "../api/auth";
+
 export default function LoginScreen() {
   const [showPw, setShowPw] = useState(false);
 
@@ -33,12 +36,42 @@ export default function LoginScreen() {
     );
   };
 
-  const handleLogin = () => {
-    if (!canLogin) return;
-    console.log("로그인 시도", { userId, password });
-    // setLoginError(true);
+  // API 사용
+  const handleLogin = async () => {
+  if (!canLogin) return;
+
+  const email = `${userId.trim()}@swu.ac.kr`;
+
+  try {
+    setLoginError(false);
+
+    const data = await login(email, password);
+
+    // 토큰 꺼내서 payload 디코딩
+    const token = data.token;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    console.log("[LoginScreen] token payload:", payload);
+
+    const loginUserId = payload.userId;   // ★ 여기!
+
+    // 토큰 / userId 저장
+    if (token) {
+      localStorage.setItem("token", token);
+    }
+    if (loginUserId != null) {
+      localStorage.setItem("userId", String(loginUserId));
+    }
+
     navigate("/home");
-  };
+  } catch (err) {
+    console.error("로그인 실패:", err);
+    setLoginError(true);
+    alert(
+      err.response?.message ||
+        "아이디 또는 비밀번호를 다시 확인해주세요."
+    );
+  }
+};
 
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
