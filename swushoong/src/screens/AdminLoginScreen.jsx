@@ -20,13 +20,6 @@ export default function AdminLoginScreen() {
   const canLogin =
     userId.trim().length > 0 && password.trim().length > 0;
 
-// 서울여대 웹메일 연결
-  const handleMailPlugClick = () => {
-    window.open(
-      "https://mc183.mailplug.com/member/login?host_domain=swu.ac.kr",
-      "_blank"
-    );
-  };
 
   // API 연결 
   const handleLogin = () => {
@@ -53,17 +46,19 @@ export default function AdminLoginScreen() {
   };
 
   return (
-    <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto overflow-hidden pt-12 pb-4">
-
-      {/* ===== 로고 ===== */}
-      <img
-        src={LogoAdmin}
-        alt="logo"
-        className="w-[147px] h-[58px] absolute left-4"
-      />
+    <div className="min-h-screen bg-white font-pretendard flex flex-col">
+      <div className="flex-1 flex flex-col px-4 pt-12 pb-4">
+      <div className="flex items-start justify-between">
+        {/* ===== 로고 ===== */}
+        <img
+          src={LogoAdmin}
+          alt="logo"
+          className="w-[147px] h-[58px]"
+        />
+      </div>
 
       {/* ===== 메인 입력 영역 ===== */}
-      <div className="absolute left-4 top-[130px] w-[361px] flex flex-col gap-6">
+      <div className="mt-10 w-full max-w-[361px] mx-auto flex flex-col gap-6">
         {/* --- 아이디 영역 --- */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
@@ -118,7 +113,7 @@ export default function AdminLoginScreen() {
       </div>
 
       {/* ===== 로그인 버튼 (비활성) ===== */}
-      <div className="absolute left-4 top-[670px] w-[361px]">
+      <div className="mt-auto pb-2">
         <BtnLong 
           label="로그인" 
           variant={canLogin ? "primary" : "disabled"}
@@ -126,6 +121,7 @@ export default function AdminLoginScreen() {
           onClick={handleLogin} 
           />
       </div>
+    </div>
     </div>
   );
 }
