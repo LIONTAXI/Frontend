@@ -1,23 +1,57 @@
 // src/screens/MyScreen.jsx
-import React, {useState} from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import ProfileImg from "../assets/img/profileIMG.svg";
 import LogoutPop from "../components/LogoutPop";
+import { getMyInfo } from "../api/my";
 
 export default function MyScreen() {
   const navigate = useNavigate();
 
   const [logoutOpen, setLogoutOpen] = useState(false);
 
-  // 탭바에서 탭 변경 시 라우팅
+  // 로그인한 유저 ID (로그인 여부 체크용)
+  const rawUserId = localStorage.getItem("userId");
+  const USER_ID = rawUserId ? Number(rawUserId) : null;
+
+  // 프로필 정보
+  const [profile, setProfile] = useState({
+    imgUrl: null,
+    name: "",
+    shortStudentId: "",
+    email: "",
+  });
+
+  useEffect(() => {
+    if (!USER_ID) return;
+
+    (async () => {
+      try {
+        const data = await getMyInfo();
+
+        const imgFromServer =
+          data.profileImageUrl || data.imgUrl || data.imageUrl || null;
+
+        setProfile({
+          imgUrl: imgFromServer,
+          name: data.name ?? "",
+          shortStudentId: data.shortStudentId ?? "",
+          email: data.email ?? "",
+        });
+      } catch (err) {
+        console.error("[MyScreen] 프로필 정보 조회 실패:", err);
+      }
+    })();
+  }, [USER_ID]);
+
   const handleChangeTab = (key) => {
     if (key === "home") {
-      navigate("/home");            // 홈 화면
+      navigate("/home");
     } else if (key === "my") {
-      navigate("/my");          // 지금 이 화면
-    } else if (key === "chat") {
-      navigate("/chat");        // 나중에 채팅 화면 생기면 연결
+      navigate("/my");
+    } else if (key === "chat-list") {
+      navigate("/chat-list");
     }
   };
 
@@ -27,14 +61,20 @@ export default function MyScreen() {
 
   const handleConfirmLogout = () => {
     setLogoutOpen(false);
-    navigate("/"); // 로그인 화면으로 이동
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("userId");
+    navigate("/");
   };
 
   const handleCancelLogout = () => {
     setLogoutOpen(false);
   };
 
-  
+  const displayName =
+    profile.name && profile.shortStudentId
+      ? `${profile.name} · ${profile.shortStudentId}`
+      : "이름 · 학번";
 
   return (
     <div className="w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col relative overflow-hidden">
@@ -48,13 +88,13 @@ export default function MyScreen() {
         {/* 프로필 영역 */}
         <section className="flex items-center gap-3 mt-4">
           <img
-            src={ProfileImg}
+            src={profile.imgUrl || ProfileImg}
             alt="프로필 이미지"
             className="w-[70px] h-[70px] rounded-full border border-black-20 object-cover"
           />
           <div className="flex flex-col gap-1">
             <p className="text-head-bold-20 text-black-70">
-              박슈니 · 23
+              {displayName}
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-1">
@@ -77,7 +117,7 @@ export default function MyScreen() {
           </div>
         </section>
 
-        {/* 받은 매너 평가 */}
+        {/* 받은 매너 평가 (아직 더미 데이터) */}
         <section className="mt-8 space-y-3">
           <h2 className="text-head-bold-20 text-black-90">
             받은 매너 평가
@@ -166,7 +206,7 @@ export default function MyScreen() {
           <button
             type="button"
             className="w-full flex items-center px-4 py-3 border-b border-black-15 text-left"
-            onClick={() => setLogoutOpen(true)}
+            onClick={handleLogoutClick}
           >
             <span className="text-body-regular-16 text-black-90">
               로그아웃

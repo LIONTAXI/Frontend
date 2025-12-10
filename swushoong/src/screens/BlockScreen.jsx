@@ -1,29 +1,62 @@
 // src/screens/BlockScreen.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import ProfileImg from "../assets/img/profileIMG.svg";
+import { getBlockedUsers, unblockUser } from "../api/my";
 
 export default function BlockScreen() {
   const navigate = useNavigate();
 
-  // 🔹 차단 사용자 리스트를 상태로 관리
-  const [blockedUsers, setBlockedUsers] = useState([
-    { id: 1, name: "박슈니 · 23", status: "blocked" },
-    { id: 2, name: "이슈니 · 23", status: "blocked" },
-    { id: 3, name: "김슈니 · 21", status: "released" }, // 해제 완료 상태
-  ]);
+  // 로그인한 유저 ID (blockerId)
+  const rawUserId = localStorage.getItem("userId");
+  const USER_ID = rawUserId ? Number(rawUserId) : null;
 
-  const handleUnblock = (id) => {
-    // TODO: 나중에 여기서 차단 해제 API 호출
-    console.log("unblock", id);
+  // 차단 사용자 리스트
+  const [blockedUsers, setBlockedUsers] = useState([]);
 
-    // 클릭한 유저의 status 를 released 로 변경
-    setBlockedUsers((prev) =>
-      prev.map((user) =>
-        user.id === id ? { ...user, status: "released" } : user
-      )
-    );
+  // 차단 목록 조회
+  useEffect(() => {
+    if (!USER_ID) return;
+
+    (async () => {
+      try {
+        const list = await getBlockedUsers(USER_ID);
+
+        const mapped = Array.isArray(list)
+          ? list.map((item) => ({
+              blockId: item.blockId,
+              blockedUserId: item.blockedUserId,
+              name: `${item.blockedUserName} · ${item.blockedUserShortStudentId}`,
+              imgUrl: item.blockedUserImgUrl,
+              status: "blocked", // 처음에는 모두 차단 상태
+            }))
+          : [];
+
+        setBlockedUsers(mapped);
+      } catch (err) {
+        console.error("[BlockScreen] 차단 목록 조회 실패:", err);
+        setBlockedUsers([]);
+      }
+    })();
+  }, [USER_ID]);
+
+  const handleUnblock = async (user) => {
+    if (!USER_ID) return;
+
+    try {
+      await unblockUser(USER_ID, user.blockedUserId);
+      console.log("[BlockScreen] 차단 해제 완료:", user);
+
+      // 해당 유저만 status를 released로 변경
+      setBlockedUsers((prev) =>
+        prev.map((u) =>
+          u.blockId === user.blockId ? { ...u, status: "released" } : u
+        )
+      );
+    } catch (err) {
+      console.error("[BlockScreen] 차단 해제 실패:", err);
+    }
   };
 
   return (
@@ -46,13 +79,13 @@ export default function BlockScreen() {
 
             return (
               <div
-                key={user.id}
+                key={user.blockId}
                 className="flex items-center justify-between"
               >
                 {/* 프로필 + 이름 */}
                 <div className="flex items-center gap-[9px]">
                   <img
-                    src={ProfileImg}
+                    src={user.imgUrl || ProfileImg}
                     alt={user.name}
                     className="w-11 h-11 rounded-full border border-[#D6D6D6] bg-[#D6D6D6] object-cover"
                   />
@@ -65,7 +98,7 @@ export default function BlockScreen() {
                 <button
                   type="button"
                   disabled={isReleased}
-                  onClick={() => !isReleased && handleUnblock(user.id)}
+                  onClick={() => !isReleased && handleUnblock(user)}
                   className={`px-3 py-[6px] rounded-[4px] text-[14px] font-semibold leading-[19.6px] ${
                     isReleased
                       ? "bg-[#D6D6D6] text-[#444444] cursor-default"
