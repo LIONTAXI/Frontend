@@ -27,19 +27,20 @@ export default function HomeScreen() {
   // 택시팟 목록
   const [taxiPots, setTaxiPots] = useState([]);
   const [selectedPotId, setSelectedPotId] = useState(null);
+  // 지도에 찍을 마커(택시팟 기준)
+  const [hostMarkers, setHostMarkers] = useState([]);
 
+  // ---- 1) 내 위치 추적 + /api/map/user-map-update ----
   useEffect(() => {
     // TODO: 실제 로그인 유저 ID 로 교체
     const USER_ID = 1;
 
-    // ---- 1) 실시간 위치 추적 ----
     if ("geolocation" in navigator) {
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
           setUserLocation({ latitude, longitude });
 
-          // 위치값으로 상태 업데이트 API 호출
           updateUserStatus({
             userId: USER_ID,
             latitude,
@@ -70,57 +71,102 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // ---- 2) 택시팟 목록 조회 ----
+  // ---- 2) 택시팟 목록 조회 → 카드 + 마커 생성 ----
   useEffect(() => {
-    const USER_ID = 1;
-    getTaxiPotList(USER_ID)
-      .then((list) => {
-        if (!Array.isArray(list)) return;
+    async function fetchData() {
+      try {
+        const potsRes = await getTaxiPotList();
+        const pots = Array.isArray(potsRes) ? potsRes : [];
 
-        const mapped = list.map((item) => ({
-          id: item.id,
-          destination: item.destination,
-          exitInfo: item.departure,
-          deadline: item.meetingTime,
-          currentCount: item.currentParticipants,
-          maxCount: item.maxParticipants,
-          price:
-            item.expectedPrice != null
-              ? `${Number(item.expectedPrice).toLocaleString()}원`
-              : "",
-          // 서버에서 내려주는 이모지만 사용 (하드코딩 제거)
-          emoji: item.emoji,
-          isOwner:
-            typeof item.isOwner === "boolean" ? item.isOwner : false,
-          // 총대 픽커용 위치
-          latitude: item.latitude,
-          longitude: item.longitude,
-        }));
+        // 카드용 택시팟 정보 + 위치 추출
+        const mappedPots = pots.map((item) => {
+          // 백엔드에서 어떤 이름으로 보내는지 모르니 여러 후보 다 체크
+          const lat =
+            item.latitude ??
+            item.lat ??
+            item.meetingLatitude ??
+            item.boardingLatitude ??
+            null;
+          const lng =
+            item.longitude ??
+            item.lng ??
+            item.meetingLongitude ??
+            item.boardingLongitude ??
+            null;
 
-        setTaxiPots(mapped);
-        if (mapped.length > 0) {
-          setSelectedPotId(mapped[0].id);
+          const hostId =
+            item.hostId ??
+            item.hostUserId ??
+            item.host?.userId ??
+            item.host?.id ??
+            item.userId ??
+            null;
+
+          return {
+            id: item.id,
+            hostId,
+            destination: item.destination,
+            exitInfo: item.departure,
+            deadline: item.meetingTime,
+            currentCount: item.currentParticipants,
+            maxCount: item.maxParticipants,
+            price:
+              item.expectedPrice != null
+                ? `${Number(item.expectedPrice).toLocaleString()}원`
+                : "",
+            emoji: item.emoji,
+            isOwner: item.isOwner === true,
+            latitude: lat,
+            longitude: lng,
+          };
+        });
+
+        // 지도에 찍을 마커 (택시팟 meeting 위치 기준)
+        const markers = mappedPots
+          .filter(
+            (pot) =>
+              pot.latitude != null &&
+              pot.longitude != null &&
+              !Number.isNaN(pot.latitude) &&
+              !Number.isNaN(pot.longitude)
+          )
+          .map((pot) => ({
+            id: pot.id, // 선택 기준
+            latitude: pot.latitude,
+            longitude: pot.longitude,
+            emoji: pot.emoji || "🟠",
+          }));
+
+        console.log("[HomeScreen] mappedPots:", mappedPots);
+        console.log("[HomeScreen] hostMarkers:", markers);
+
+        setTaxiPots(mappedPots);
+        setHostMarkers(markers);
+
+        // 기본 선택: 첫 번째 택시팟
+        if (mappedPots.length > 0) {
+          setSelectedPotId(mappedPots[0].id);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("[HomeScreen] 택시팟 목록 조회 실패:", err);
-      });
+      }
+    }
+
+    fetchData();
   }, []);
 
   const toggleViewMode = () => {
-    setViewMode((prev) =>
-      prev === "compact" ? "expanded" : "compact"
-    );
+    setViewMode((prev) => (prev === "compact" ? "expanded" : "compact"));
   };
 
   const handleCreateTaxiPot = () => {
-  navigate("/add-taxi", {
-    state: {
-      // 지금 watchPosition으로 추적하고 있는 내 위치
-      hostLocation: userLocation,
-    },
-  });
-};
+    navigate("/add-taxi", {
+      state: {
+        // 지금 watchPosition 으로 추적하고 있는 내 위치
+        hostLocation: userLocation,
+      },
+    });
+  };
 
   const handleClickCard = (pot) => {
     setSelectedPotId(pot.id);
@@ -136,7 +182,7 @@ export default function HomeScreen() {
     });
   };
 
-  // 내가 올린 택시팟이 하나라도 있는지
+  // 내가 올린 택시팟이 하나라도 있는지 (내 위치 픽커 색상 결정용)
   const isHostMe = taxiPots.some((pot) => pot.isOwner === true);
 
   const handleSelectTaxiPotFromMap = (partyId) => {
@@ -181,12 +227,12 @@ export default function HomeScreen() {
         </button>
       </header>
 
-      {/* ===== 지도 영역 (카카오맵 자리) ===== */}
+      {/* ===== 지도 영역 ===== */}
       <div className="px-0">
         <KakaoMap
           userLocation={userLocation}
-          taxiHosts={taxiPots}              // 총대 위치들
-          selectedTaxiPotId={selectedPotId} // 선택된 택시팟
+          taxiHosts={hostMarkers}
+          selectedTaxiPotId={selectedPotId}
           onSelectTaxiPot={handleSelectTaxiPotFromMap}
           onAddressChange={setStationLabel}
           isHostMe={isHostMe}
@@ -229,7 +275,7 @@ export default function HomeScreen() {
               currentCount={pot.currentCount}
               maxCount={pot.maxCount}
               price={pot.price}
-              emoji={pot.emoji} // ← 서버 이모지 그대로
+              emoji={pot.emoji}
               highlighted={selectedPotId === pot.id}
               variant={viewMode === "compact" ? "small" : "big"}
               fullWidth={viewMode === "expanded"}
