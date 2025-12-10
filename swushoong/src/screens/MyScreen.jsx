@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import ProfileImg from "../assets/img/profileIMG.svg";
 import LogoutPop from "../components/LogoutPop";
-import { getMyInfo } from "../api/my";
+import { getMyInfo, fetchProfileImageWithAuth } from "../api/my";
 
 export default function MyScreen() {
   const navigate = useNavigate();
@@ -15,13 +15,16 @@ export default function MyScreen() {
   const rawUserId = localStorage.getItem("userId");
   const USER_ID = rawUserId ? Number(rawUserId) : null;
 
-  // 프로필 정보
+  // 프로필 기본 정보
   const [profile, setProfile] = useState({
     imgUrl: null,
     name: "",
     shortStudentId: "",
     email: "",
   });
+
+  // 실제로 <img src>에 넣을 blob URL
+  const [profileImageBlobUrl, setProfileImageBlobUrl] = useState(null);
 
   useEffect(() => {
     if (!USER_ID) return;
@@ -39,6 +42,18 @@ export default function MyScreen() {
           shortStudentId: data.shortStudentId ?? "",
           email: data.email ?? "",
         });
+
+        // 보호된 이미지 API를 직접 blob으로 받아오기
+        if (imgFromServer) {
+          const blobUrl = await fetchProfileImageWithAuth(imgFromServer);
+          if (blobUrl) {
+            setProfileImageBlobUrl(blobUrl);
+          } else {
+            setProfileImageBlobUrl(null);
+          }
+        } else {
+          setProfileImageBlobUrl(null);
+        }
       } catch (err) {
         console.error("[MyScreen] 프로필 정보 조회 실패:", err);
       }
@@ -88,7 +103,7 @@ export default function MyScreen() {
         {/* 프로필 영역 */}
         <section className="flex items-center gap-3 mt-4">
           <img
-            src={profile.imgUrl || ProfileImg}
+            src={profileImageBlobUrl || ProfileImg}
             alt="프로필 이미지"
             className="w-[70px] h-[70px] rounded-full border border-black-20 object-cover"
           />
