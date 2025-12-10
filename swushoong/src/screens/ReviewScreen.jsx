@@ -93,9 +93,8 @@ export default function ReviewScreen() {
         fetchProfileData();
     }, [fetchProfileData]);
 
-    const handleBack = () => {
-        navigate(-1); // 실제 사용 시 이전 페이지로 돌아갑니다.
-
+    const handleBackToList = () => {
+        navigate(-1);
     };
 
     // 메뉴 닫기 함수: BottomMenu의 onClose prop에 전달
@@ -164,7 +163,7 @@ export default function ReviewScreen() {
             {/* 1. 상단 헤더 */}
             <Header
                 title="프로필" 
-                onBack={handleBack} 
+                onBack={handleBackToList} 
                 rightIcon={MenuIcon} // 메뉴 아이콘 표시
                 onRightClick={() => setIsMenuOpen(true)} // 클릭 시 메뉴 열기
             />

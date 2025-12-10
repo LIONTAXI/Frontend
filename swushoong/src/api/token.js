@@ -1,5 +1,6 @@
 // src/api/token.js
-const TOKEN_KEY = "authToken";
+//const TOKEN_KEY = "authToken";
+const TOKEN_KEY = "token";
 
 export function setAuthToken(token) {
   try {
