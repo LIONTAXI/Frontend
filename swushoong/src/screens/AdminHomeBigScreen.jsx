@@ -19,75 +19,70 @@ const IconToggle = ({ isOpen }) => (
     </svg>
 );
 
-// ----------------------------------------------------
-// [더미 데이터 설정]
-// ----------------------------------------------------
+const formatDate = (dateString) => {
+    if (!dateString) return null;
+    try {
+        // 'YYYY. MM. DD.' 형태에서 마지막 '.' 제거 로직
+        return new Date(dateString).toLocaleDateString('ko-KR').replace(/\. /g, '.').replace(/\.$/, '');
+    } catch (e) {
+        console.error("Invalid date string for formatting:", dateString, e);
+        return null;
+    }
+};
+
+const AdminAuthImage = ({ authId, fallbackSrc }) => {
+    const [dataUrl, setDataUrl] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!authId) return;
+
+        const fetchImage = async () => {
+            setLoading(true);
+            try {
+                // 수정된 API 함수 호출: 실제 Blob 데이터를 반환함
+                const imageBlob = await API.getAuthRequestImage(authId);
+                
+                // Blob을 Base64 Data URL로 변환하는 로직
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setDataUrl(reader.result);
+                    setLoading(false);
+                };
+                reader.onerror = () => {
+                    throw new Error("Blob to Data URL conversion failed.");
+                }
+                reader.readAsDataURL(imageBlob);
+
+            } catch (err) {
+                console.error("Failed to load authenticated image:", err);
+                setDataUrl(null); // 로드 실패 시 Data URL 초기화
+                setLoading(false);
+            }
+        };
+
+        fetchImage();
+    }, [authId]); // authId가 변경될 때마다 다시 로드
+
+    if (loading) {
+        // 로딩 중 표시
+        return <div className="w-[300px] h-full bg-black-20 flex items-center justify-center text-black-50">이미지 로딩 중...</div>;
+    }
+
+    // dataUrl이 있으면 실제 이미지 표시, 없으면 임시 이미지 표시
+    return (
+        <img 
+            src={dataUrl || fallbackSrc} 
+            alt="학생증" 
+            className="w-[300px] h-auto object-contain" // 스타일은 기존 코드에 맞게 조정
+        />
+    );
+};
+
 
 // ⭐ 테스트 시: true로 설정
 // ⭐ 실제 서비스 시: false로 변경하여 API 호출
 const USE_DUMMY_DATA = false; 
-
-const DUMMY_PENDING_REQUESTS = [
-    {
-        id: 1, // authId
-        name: '김슈니',
-        major: '소프트웨어융합학과', 
-        status: '학부생', 
-        requesterName: '김슈니',
-        requesterId: '2021111222',
-        date: '2025.12.01',
-        rejectionReason: null,
-        rejectionDate: null,
-        isApproved: false,
-        imageUrl: Example, 
-        userEmail: 'kim.shuni@swu.ac.kr', 
-    },
-    {
-        id: 2,
-        name: '최서연',
-        major: '컴퓨터공학과', 
-        status: '학부생', 
-        requesterName: '최서연',
-        requesterId: '2021111409',
-        date: '2025.12.02',
-        rejectionReason: null,
-        rejectionDate: null,
-        isApproved: false,
-        imageUrl: Example, 
-        userEmail: 'choi.sy@swu.ac.kr', 
-    },
-];
-
-const DUMMY_COMPLETED_REQUESTS = [
-    {
-        id: 3,
-        name: '박민준',
-        major: '디자인학과', 
-        status: '졸업생', 
-        requesterName: '박민준',
-        requesterId: '20190501',
-        date: '2025.11.25',
-        rejectionReason: '이미지 부정확',
-        rejectionDate: '2025.11.26',
-        isApproved: false, // 반려 완료
-        imageUrl: Example,
-        userEmail: 'park.mj@swu.ac.kr',
-    },
-    {
-        id: 4,
-        name: '이보람',
-        major: '소프트웨어융합학과', 
-        status: '학부생', 
-        requesterName: '이보람',
-        requesterId: '2022110111',
-        date: '2025.11.20',
-        rejectionReason: null,
-        rejectionDate: null,
-        isApproved: true, // 승인 완료
-        imageUrl: Example,
-        userEmail: 'lee.br@swu.ac.kr',
-    },
-];
 // ----------------------------------------------------
 
 
@@ -199,6 +194,7 @@ export default function AdminHomeBigScreen() {
                 rejectionReason: req.failureReason,
                 rejectionDate: req.reviewedAt && req.failureReason ? new Date(req.reviewedAt).toLocaleDateString('ko-KR').replace(/\. /g, '.').replace(/\.$/, '') : null,
                 isApproved: req.status === 'APPROVED',
+                approvalDate: req.status === 'APPROVED' && req.reviewedAt ? formatDate(req.reviewedAt) : null,
                 imageUrl: req.imageUrl,
                 userEmail: req.userEmail, 
             })).sort((a, b) => (b.id > a.id ? 1 : -1));
@@ -252,7 +248,8 @@ export default function AdminHomeBigScreen() {
     const handleSendRejectMailConfirm = async () => {
         if (!currentAuthId || !selectedReason) return;
         
-        const rejectionDate = new Date().toLocaleDateString('ko-KR').replace(/\. /g, '.').replace(/\.$/, '');
+        const reviewedAt = new Date().toISOString(); 
+        const rejectionDate = formatDate(reviewedAt);
 
         try {
             if (USE_DUMMY_DATA) {
@@ -267,9 +264,14 @@ export default function AdminHomeBigScreen() {
                 }
                 
                 // ✅ [반려 확인 상태로 변경]: pendingRequests 상태만 업데이트하여 현재 화면에 반려 정보 표시
-                setPendingRequests(prev => prev.map(req => 
-                    req.id === currentAuthId 
-                    ? { ...req, rejectionReason: selectedReason, rejectionDate: rejectionDate, isApproved: false }
+                setPendingRequests(prev => prev.map(req =>
+                    req.id === currentAuthId
+                    ? { 
+                        ...req, 
+                        rejectionReason: selectedReason, 
+                        rejectionDate: rejectionDate, // ⭐ 여기에 날짜가 들어가야 함
+                        isApproved: false 
+                    }
                     : req
                 ));
                 
@@ -278,9 +280,14 @@ export default function AdminHomeBigScreen() {
                 await API.rejectAuthRequestByApproveEndpoint(currentAuthId, selectedReason);
                 
                 // ✅ [반려 확인 상태로 변경]: API 모드에서도 현재 요청 상태를 임시 업데이트
-                setPendingRequests(prev => prev.map(req => 
-                    req.id === currentAuthId 
-                    ? { ...req, rejectionReason: selectedReason, rejectionDate: rejectionDate, isApproved: false }
+                setPendingRequests(prev => prev.map(req =>
+                    req.id === currentAuthId
+                    ? { 
+                        ...req, 
+                        rejectionReason: selectedReason, 
+                        rejectionDate: rejectionDate, // ⭐ 여기에 날짜가 들어가야 함
+                        isApproved: false 
+                    }
                     : req
                 ));
             }
@@ -294,7 +301,7 @@ export default function AdminHomeBigScreen() {
 
         } catch (err) {
             console.error("Failed to reject request:", err);
-            alert(`요청 반려에 실패했습니다: ${err.message}`);
+            //alert(`요청 반려에 실패했습니다: ${err.message}`);
             setIsModalOpen(false);
         }
     };
@@ -340,9 +347,9 @@ export default function AdminHomeBigScreen() {
                 }
                 
                  // ✅ [승인 확인 상태로 변경]: pendingRequests 상태만 업데이트하여 현재 화면에 승인 정보 표시
-                setPendingRequests(prev => prev.map(req => 
-                    req.id === currentAuthId 
-                    ? { ...req, rejectionReason: null, rejectionDate: null, isApproved: true }
+                setPendingRequests(prev => prev.map(req =>
+                    req.id === currentAuthId
+                    ? { ...req, rejectionReason: null, rejectionDate: null, isApproved: true, approvalDate: approvalDate } // approvalDate 추가
                     : req
                 ));
                 
@@ -493,8 +500,10 @@ export default function AdminHomeBigScreen() {
 
                             {/* 요청 정보 카드 */}
                             <div className=" w-[300px] flex flex-col items-center">
-                                {/* 이미지 URL 사용 */}
-                                <img src={currentRequest.imageUrl || Example} alt="학생증" /> 
+                                <AdminAuthImage 
+                                    authId={currentRequest.id} 
+                                    allbackSrc={Example} 
+                                />
                             </div>
 
                             {/* 오른쪽 슬라이드 버튼 */}
@@ -522,7 +531,17 @@ export default function AdminHomeBigScreen() {
                             )}
                             {/* ✅ 승인 완료된 경우 */}
                              {currentRequest.isApproved && !currentRequest.rejectionReason && (
-                                <div className="flex mt-2"><span className="flex items-center text-[#FC7E2A] text-body-semibold-16 mr-1">승인 완료</span></div>
+                                <div className="mt-2 border-t border-black-40 pt-2">
+                                    <div className="flex mb-1">
+                                        <span className="flex items-center text-[#FC7E2A] text-body-semibold-16 mr-1"></span>
+                                    </div>
+                                    {currentRequest.approvalDate && (
+                                        <div className="flex">
+                                            <span className="flex items-center text-black-40 text-body-semibold-16 mr-1">승인 날짜</span>
+                                            <span className="text-black-50 text-body-regular-16">{currentRequest.approvalDate}</span>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                         
@@ -592,6 +611,7 @@ export default function AdminHomeBigScreen() {
                                 key={request.id} 
                                 request={request} 
                                 onClick={handleCompletedItemClick}
+                                approvalDate={request.approvalDate}
                            />
                         ))}
                     </div>

@@ -2,26 +2,83 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import IconBig from "../assets/icon/icon_big.svg";
-// API 함수 임포트 (경로 확인 필수)
-import { getAllAuthRequests, approveAuthRequest, getCompletedAuthRequests } from "../api/Admin";
+import { 
+    getAllAuthRequests, 
+    approveAuthRequest, 
+    getCompletedAuthRequests, 
+    getAuthRequestImage
+} from "../api/Admin";
 
 // 승인 요청 카드를 렌더링하는 개별 컴포넌트
-const ApprovalCard = ({ authId, name, studentId, onApprove }) => {
-    // 이미지 placeholder (나중에 API 연결 )
-    const imagePlaceholder = (
-        <div className="w-full h-[180px] bg-[#D9D9D9] rounded-lg"></div>
-    );
+const ApprovalCard = ({ authId, name, studentId, onApprove, onRejectDetail }) => {
+    const [imageUrl, setImageUrl] = useState(null);
+    const [imageLoading, setImageLoading] = useState(true);
+    const [imageError, setImageError] = useState(false);
 
-    // 승인 버튼 클릭 핸들러
+    // 이미지 로딩 함수
+    useEffect(() => {
+        const fetchImage = async () => {
+            setImageLoading(true);
+            setImageError(false);
+            if (!authId) {
+                setImageLoading(false);
+                return;
+            }
+
+            try {
+                // 8. 인증 요청 이미지 조회 API 호출 (Blob 반환 가정)
+                const imageBlob = await getAuthRequestImage(authId);
+                
+                if (!(imageBlob instanceof Blob)) {
+                    // API가 Blob이 아닌 다른 값(예: JSON 객체 { message: "..." })을 반환했을 경우
+                    throw new Error("API did not return image data (Blob).");
+                }
+                
+                // Blob을 Data URI로 변환
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setImageUrl(reader.result);
+                    setImageLoading(false);
+                };
+                reader.onerror = () => {
+                    throw new Error("Blob to Data URI conversion failed.");
+                };
+                reader.readAsDataURL(imageBlob);
+
+            } catch (err) {
+                console.error(`이미지 로드 실패 (ID: ${authId}):`, err);
+                setImageError(true);
+                setImageLoading(false);
+            }
+        };
+        fetchImage();
+    }, [authId]);
+
+
     const handleApproveClick = () => {
         if (window.confirm(`${name} (${studentId}) 님의 승인 요청을 처리하시겠습니까?`)) { 
             onApprove(authId);
         }
     };
 
+    const imageContent = () => {
+        // 기존 UI 크기 및 스타일 유지
+        const commonStyle = "w-full h-[180px] rounded-lg flex items-center justify-center text-body-regular-16";
+        
+        if (imageLoading) {
+            return <div className={`bg-[#D9D9D9] text-black-50 ${commonStyle}`}>이미지 로딩 중...</div>;
+        }
+        if (imageError || !imageUrl) {
+            return <div className={`bg-red-100 text-red-500 ${commonStyle}`}>이미지 로드 실패</div>;
+        }
+        
+        // Data URI로 변환된 이미지를 사용하여 렌더링
+        return <img src={imageUrl} alt={`인증 이미지: ${name}`} className="w-full h-[180px] object-cover rounded-lg"/>;
+    };
+
     return (
         <div className="flex flex-col bg-white shadow-sm">
-            {imagePlaceholder}
+            {imageContent()}
             <div className="p-2 mt-1 border border-black-10 bg-black-10 rounded-lg">
                 <p className="text-body-bold-16 text-black-40">
                     이름
@@ -62,6 +119,11 @@ export default function AdminHomeScreen() {
     // 탭 확장 
     const handleExpandClick = () => {
         navigate('/admin-home-big');
+    };
+
+    const handleRejectDetail = (authId) => {
+        // 반려 사유 선택/입력 화면으로 이동 (혹은 AdminHomeBigScreen으로 상세 요청 ID와 함께 이동)
+        navigate(`/admin-home-big?authId=${authId}`); 
     };
 
     /*
