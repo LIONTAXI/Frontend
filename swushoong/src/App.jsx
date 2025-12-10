@@ -31,8 +31,6 @@ import ChatScreen from "./screens/ChatScreen";
 import CountScreen from "./screens/CountScreen"; 
 import ResultScreen from "./screens/ResultScreen";
 import CurrentPayScreen from "./screens/CurrentPayScreen";
-//import TaxiMemberScreen from "./screens/TexiMemberScreen";
-//import TaxiSwuScreen from "./screens/TaxiSwuScreen";
 import MemberListScreen from "./screens/MemberListScreen";
 import PayMemberScreen from "./screens/PayMemberScreen";
 
@@ -81,7 +79,6 @@ export default function App() {
           <Route path="/review-swu" element={<ReviewSwuScreen />} />  
           <Route path="/member-profile/:userId" element={<ReviewScreen />} />  
           <Route path="/review-arrive" element={<ReviewArriveScreen />} /> 
-
           <Route path="/review-all/:taxiPartyId/:revieweeId" element={<ReviewAllScreen />} />
 
           <Route path="/home" element={<HomeScreen />} />

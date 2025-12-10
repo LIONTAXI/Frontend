@@ -1,32 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Header2 from "../components/Header2";
 import Profile from "../assets/img/profileIMG.svg";
 
 import { getReviewDetail } from '../api/review';
 import { getCurrentUserId } from '../api/token';
 
-const getReviewDetail = async (reviewId) => {
-    console.log(`API Call: GET /api/reviews/${reviewId}`);
-    // 실제 API 호출 로직 대신, 제공된 성공 응답으로 시뮬레이션합니다.
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve({ 
-                "reviewId": reviewId,
-                "taxiPartyId": 9,
-                "reviewerId": 4,
-                "reviewerName": "김수니",
-                "reviewerShortStudentId": "23",
-                "reviewerImgUrl": "https://...",
-                "matchPreferenceRate": 97,
-                "unpaidCount": 0,
-                "positiveTags": [ "PROMISE_ON_TIME", "RESPONSE_FAST", "KIND" ],
-                "negativeTags": [ "SETTLEMENT_LATE" ],
-                "canWriteBack": true 
-            });
-        }, 500);
-    });
-};
 
 const TAG_LABEL_TO_ENUM = {
     "약속을 잘 지켜요": "PROMISE_ON_TIME",

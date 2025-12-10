@@ -57,8 +57,19 @@ export default function ChatScreen() {
     
     // --- 헬퍼 함수: 서버 응답을 UI 메시지 형식으로 변환 ---
     const formatMessage = (data) => {
+        const dateToParse = data.sentAt.endsWith('Z') || data.sentAt.includes('+') ? data.sentAt : data.sentAt + 'Z';
+        const dateObject = new Date(dateToParse);
+
         // 서버 응답 예시: { "messageId": 10, "senderId": 3, "name": "이슈니", "shortStudentId": "23", "content": "...", "sentAt": "2025-11-10T19:20:00" }
         const isMyMessage = data.senderId === currentUserId; 
+
+        // KST(한국 표준시, UTC+9)로 정확히 포맷팅
+        const formatter = new Intl.DateTimeFormat('ko-KR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false, // '오전/오후' 형식 포함
+        timeZone: 'Asia/Seoul'
+        });
 
         if (!isMyMessage) {
         console.log("상대방 메시지 데이터 수신 확인:", { 
@@ -75,7 +86,8 @@ export default function ChatScreen() {
             name: isMyMessage ? '나' : data.name,
             age: data.shortStudentId,
             text: data.content,
-            time: new Date(data.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+            //time: new Date(data.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+            time: formatter.format(dateObject),
             timestamp: new Date(data.sentAt).getTime(),
         };
     };
@@ -83,6 +95,21 @@ export default function ChatScreen() {
     // STOMP 메시지 수신 처리 함수
     const handleStompMessage = useCallback((data) => {
         if (data.type === 'system-connect') {
+
+            console.log("💰 정산 완료 시스템 메시지 수신:", data);
+            setMatchStatus('ended');
+            setIsSettlementEntered(true);
+
+            if (!isHost) {
+            const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
+            setMessages(prev => {
+                const isDuplicate = prev.some(msg => msg.type === 'system' && msg.text === SETTLEMENT_COMPLETE_MESSAGE);
+                if (isDuplicate) return prev;
+                return [ ...prev, { id: Date.now(), type: 'system', text: SETTLEMENT_COMPLETE_MESSAGE, timestamp: Date.now() }];
+            });
+            return;
+            }   
+
             setMessages((prev) => [...prev, {
                 id: Date.now(),
                 type: 'system',
@@ -95,7 +122,7 @@ export default function ChatScreen() {
         const receivedMessage = formatMessage(data);
 
         setMessages((prev) => [...prev, receivedMessage]);
-    }, [currentUserId]); // currentUserId가 변경될 때마다 재생성
+    }, [currentUserId, isHost]); // currentUserId가 변경될 때마다 재생성
 
     // 메뉴 닫기 및 열기 함수 
     const handleOpenMenu = () => { setIsMenuOpen(true); };
@@ -259,6 +286,12 @@ export default function ChatScreen() {
                 const partyInfo = await getTaxiPartyInfo(partyId, currentUserId);
                 setIsHost(partyInfo.hostId === currentUserId);
                 setMatchInfo(partyInfo);
+
+                if (partyInfo.status === 'ENDED' || partyInfo.isCompleted) { // API 응답 필드명에 따라 수정 필요
+                    setMatchStatus('ended');
+                    console.log("🔎 채팅방 로드 시 매칭 상태 확인: ENDED");
+                }
+
 
                 const settlementStatus = await getCurrentSettlementId(partyId);
                 if (settlementStatus.hasSettlement && settlementStatus.settlementId) {

@@ -48,8 +48,7 @@ export default function LoginScreen() {
 
     const data = await login(email, password);
 
-      // ⭐ [수정] 토큰 추출 및 저장 로직 추가 시작 ⭐
-      // 서버 응답에서 토큰 필드명 확인 후 사용 (예: data.token 또는 data.accessToken)
+/*
       const token = data.token || data.accessToken; 
       
       if (token) {
@@ -59,7 +58,6 @@ export default function LoginScreen() {
           // 토큰이 없으면 오류 처리
           throw new Error("서버 응답에 인증 토큰이 포함되어 있지 않습니다.");
       }
-      // ⭐ [수정] 토큰 추출 및 저장 로직 추가 끝 ⭐
       
 
       navigate("/home");
@@ -71,9 +69,9 @@ export default function LoginScreen() {
           "아이디 또는 비밀번호를 다시 확인해주세요."
       );
 
+*/
 
 
-/*
     // 토큰 꺼내서 payload 디코딩
     const token = data.token;
     const payload = JSON.parse(atob(token.split(".")[1]));
@@ -97,7 +95,7 @@ export default function LoginScreen() {
       err.response?.message ||
         "아이디 또는 비밀번호를 다시 확인해주세요."
     );
-    */
+  
   }
 };
 
