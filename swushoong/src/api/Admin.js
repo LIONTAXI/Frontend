@@ -27,19 +27,23 @@ async function apiRequest(endpoint, options = {}) {
             headers: headers, // Basic 인증 헤더가 포함된 headers 사용
         });
 
-        if (!response.ok) {
-            // HTTP 오류 상태 코드(4xx, 5xx)에 대한 처리
+        if (options.returnRawResponse) {
+            return response;
+        }
+
+        if (response.status >= 400 && response.status !== 400) {
+             // 400이 아닌 4xx 또는 5xx 오류만 여기서 처리합니다.
             const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
             throw new Error(errorData.message || `API request failed with status ${response.status}`);
         }
 
-        // 응답 본문이 없을 경우 (204 No Content 등)를 처리
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
+            // 400 Bad Request인 경우에도 응답 본문(JSON)을 반환하고,
+            // 이 JSON은 `rejectAuthRequestByApproveEndpoint`의 `try` 블록으로 전달됩니다.
             return await response.json();
         } else {
-            // JSON 응답이 아닌 경우 (예: 성공했으나 본문이 없는 경우)
-            return { message: "Success (No content)" };
+            return { message: `Success (Status: ${response.status})` };
         }
 
     } catch (error) {
@@ -97,10 +101,17 @@ export async function getAuthRequestDetails(authId) {
  */
 export async function approveAuthRequest(authId) {
     const endpoint = "/api/admin/auth-requests/approve";
+    
+    const requestBody = {
+        authId: authId,
+        isApproved: true, // ✅ 승인 처리를 위한 필수 필드
+        rejectionReason: null, // ✅ 명세에 따라 null 명시
+    };
+
     console.log(`Approving auth request ID: ${authId}...`);
     return apiRequest(endpoint, {
         method: "POST",
-        body: JSON.stringify({ authId }), // 백엔드 API에 맞게 Body 구조 조정 필요
+        body: JSON.stringify(requestBody), 
     });
 }
 
@@ -180,9 +191,14 @@ export async function getAuthRequestImage(authId) {
     try {
         const response = await apiRequest(endpoint, {
             method: "GET",
+            returnRawResponse: true 
         });
+
+        if (!response.ok) {
+            throw new Error(`이미지 로드 실패: ${response.status}`);
+        }
         
-        return response; 
+        return await response.blob();
         
     } catch (error) {
         console.error(`Error fetching image for request ${authId}:`, error.message);

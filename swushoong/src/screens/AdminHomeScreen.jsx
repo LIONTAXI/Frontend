@@ -20,17 +20,34 @@ const ApprovalCard = ({ authId, name, studentId, onApprove, onRejectDetail }) =>
         const fetchImage = async () => {
             setImageLoading(true);
             setImageError(false);
+            if (!authId) {
+                setImageLoading(false);
+                return;
+            }
+
             try {
-                // 8. 인증 요청 이미지 조회 API 호출
-                const base64String = await getAuthRequestImage(authId);
+                // 8. 인증 요청 이미지 조회 API 호출 (Blob 반환 가정)
+                const imageBlob = await getAuthRequestImage(authId);
                 
-                // Base64 문자열을 Data URI로 변환 (PNG 형식이라고 가정)
-                const dataUri = `data:image/png;base64,${base64String}`;
-                setImageUrl(dataUri);
+                if (!(imageBlob instanceof Blob)) {
+                    // API가 Blob이 아닌 다른 값(예: JSON 객체 { message: "..." })을 반환했을 경우
+                    throw new Error("API did not return image data (Blob).");
+                }
+                
+                // Blob을 Data URI로 변환
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setImageUrl(reader.result);
+                    setImageLoading(false);
+                };
+                reader.onerror = () => {
+                    throw new Error("Blob to Data URI conversion failed.");
+                };
+                reader.readAsDataURL(imageBlob);
+
             } catch (err) {
                 console.error(`이미지 로드 실패 (ID: ${authId}):`, err);
                 setImageError(true);
-            } finally {
                 setImageLoading(false);
             }
         };
@@ -44,20 +61,18 @@ const ApprovalCard = ({ authId, name, studentId, onApprove, onRejectDetail }) =>
         }
     };
 
-    /*
-    // 이미지 placeholder (나중에 API 연결 )
-    const imagePlaceholder = (
-        <div className="w-full h-[180px] bg-[#D9D9D9] rounded-lg"></div>
-    );
-    */
-
     const imageContent = () => {
+        // 기존 UI 크기 및 스타일 유지
+        const commonStyle = "w-full h-[180px] rounded-lg flex items-center justify-center text-body-regular-16";
+        
         if (imageLoading) {
-            return <div className="w-full h-[180px] bg-[#D9D9D9] rounded-lg flex items-center justify-center text-black-50 text-body-regular-16">이미지 로딩 중...</div>;
+            return <div className={`bg-[#D9D9D9] text-black-50 ${commonStyle}`}>이미지 로딩 중...</div>;
         }
         if (imageError || !imageUrl) {
-            return <div className="w-full h-[180px] bg-red-100 rounded-lg flex items-center justify-center text-red-500 text-body-regular-16">이미지 로드 실패</div>;
+            return <div className={`bg-red-100 text-red-500 ${commonStyle}`}>이미지 로드 실패</div>;
         }
+        
+        // Data URI로 변환된 이미지를 사용하여 렌더링
         return <img src={imageUrl} alt={`인증 이미지: ${name}`} className="w-full h-[180px] object-cover rounded-lg"/>;
     };
 
