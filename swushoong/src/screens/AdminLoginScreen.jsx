@@ -2,47 +2,60 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import BtnLong from "../components/BtnLong";
-import Admin from "../api/Admin";
+import { adminLogin } from "../api/Admin";
 
 export default function AdminLoginScreen() {
   const [showPw, setShowPw] = useState(false);
 
-// 로그인 버튼 활성화 조작
+  // 로그인 버튼 활성화 조작
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
 
-// 로그인 실패 여부
+  // 로그인 실패 여부
   const [loginError, setLoginError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
 // 로그인 버튼 활성화(둘 다 비어 있지 않을 경우)
   const canLogin =
-    userId.trim().length > 0 && password.trim().length > 0;
+    userId.trim().length > 0 && password.trim().length > 0 && !isLoading;
 
 
   // API 연결 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!canLogin) return;
 
-            const requiredId = import.meta.env.VITE_ADMIN_USER;
-            const requiredPassword = import.meta.env.VITE_ADMIN_PASS;
-        
-            // 입력 ID: 'admin' (userId) + '@swu.ac.kr'
-            const fullUserId = `${userId}@swu.ac.kr`;
+        // 입력 ID: 'admin' (userId) + '@swu.ac.kr'
+        const fullUserId = `${userId}@swu.ac.kr`;
 
-            // 인증 성공 여부 판단
-        if (fullUserId === requiredId && password === requiredPassword) {
-            // 인증 성공: API 파일의 commonHeaders에 고정된 인증 정보가 이미 설정되었으므로
-            // 로그인 상태를 유지하고 대시보드로 이동만 하면 됩니다.
-            console.log("로그인 성공 (환경 변수 일치)");
-            setLoginError(false);
-            navigate('/admin-home'); // 성공 시 대시보드로 이동
-        } else {
-            // 인증 실패
-            console.log("로그인 실패 (환경 변수 불일치)");
-            setLoginError(true);
-        }
+        setIsLoading(true); 
+
+        
+    try {
+      // 1. API 호출: Admin 모듈의 adminLogin 함수 사용
+      const response = await adminLogin(fullUserId, password);
+
+      // 2. 응답 처리
+      if (response && response.success === true && response.role === "ADMIN") {
+        console.log("로그인 성공 (API 인증)");
+        setLoginError(false);
+        // TODO: 원래는 로그인 성공 시, 백엔드에서 받은 토큰이나 세션 정보를 저장해야 함
+        // 만약 서버가 JWT를 반환한다면, 이곳에서 저장하고 모든 후속 요청에 사용해야 함
+        // 근데 관리자 페이지는 예외 
+
+        navigate('/admin-home'); 
+      } else {
+        console.log("로그인 실패 (API 논리적 오류)");
+        setLoginError(true);
+      }
+    }
+     catch (error) {
+      console.error("로그인 API 호출 오류:", error);
+      setLoginError(true);
+    } finally {
+      setIsLoading(false); // 로딩 종료
+    }
   };
 
   return (
@@ -75,6 +88,7 @@ export default function AdminLoginScreen() {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               className="flex-1 bg-transparent outline-none text-body-semibold-16 text-black-90"
+              disabled={isLoading}
             />
             <span className="ml-2 text-body-regular-16 text-black-50">
               @swu.ac.kr

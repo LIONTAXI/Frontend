@@ -12,13 +12,6 @@ const commonHeaders = {
     "Authorization": `Basic ${encodedAuth}`, // Basic 인증 헤더 사용
 };
 
-/**
- * 기본 Fetch 요청을 처리하는 유틸리티 함수
- * @param {string} endpoint - API 엔드포인트 경로 (예: /api/users)
- * @param {object} options - Fetch API 옵션 객체
- * @returns {Promise<object>} - 서버 응답 데이터 (JSON 형식)
- */
-
 async function apiRequest(endpoint, options = {}) {
     const url = `${BASE_URL}${endpoint}`;
     
@@ -127,15 +120,10 @@ export async function getRejectionReasons() {
 /**
  * 6. 관리자가 해당 요청 반려 (API 명세 반영)
  * POST /api/admin/auth-requests/approve
- * * @param {string | number} authId - 반려할 인증 요청의 ID
- * @param {string} rejectionReason - 반려 사유 문자열 (필수)
- * @returns {Promise<object>} - 서버 응답 데이터 (JSON 형식) 또는 에러 메시지
  */
 export async function rejectAuthRequestByApproveEndpoint(authId, rejectionReason) {
     
-    // 1. 반려 사유 필수 검증 로직 추가
     if (!rejectionReason || rejectionReason.trim() === "") {
-        // 명세에 따라 반려 사유가 없을 때 반환할 메시지를 Error 객체로 랩핑하여 던집니다.
         throw new Error("반려 사유를 입력해주세요"); 
     }
 
@@ -143,7 +131,7 @@ export async function rejectAuthRequestByApproveEndpoint(authId, rejectionReason
     
     console.log(`Rejecting auth request ID: ${authId} with reason: ${rejectionReason}...`);
     
-    // 2. 요청 본문 구조 변경 (API 명세 반영)
+    // 2. 요청 본문 구조 변경
     const requestBody = {
         authId: authId,
         isApproved: false, // 반려 처리
@@ -157,8 +145,6 @@ export async function rejectAuthRequestByApproveEndpoint(authId, rejectionReason
             body: JSON.stringify(requestBody), 
         });
 
-        // 명세에 따라 "인증 요청이 반려되었습니다" 라는 응답을 가정
-        // apiRequest가 JSON 응답을 반환한다고 가정하면, 서버는 { message: "인증 요청이 반려되었습니다" } 형태일 수 있습니다.
         return response; 
         
     } catch (error) {
@@ -182,6 +168,90 @@ export async function getCompletedAuthRequests(params = {}) {
     });
 }
 
+// --- 8. 인증 요청 이미지 조회 ---
+/**
+ * GET /api/admin/auth-requests/{authId}/image
+ * 특정 인증 요청에 첨부된 이미지 파일을 조회 (Base64 인코딩된 문자열이나 URL 등으로 가정)
+ */
+export async function getAuthRequestImage(authId) {
+    const endpoint = `/api/admin/auth-requests/${authId}/image`;
+    console.log(`Fetching image for auth request ID: ${authId}...`);
+
+    try {
+        const response = await apiRequest(endpoint, {
+            method: "GET",
+        });
+        
+        return response; 
+        
+    } catch (error) {
+        console.error(`Error fetching image for request ${authId}:`, error.message);
+        throw error;
+    }
+}
+
+// --- 9. 관리자 로그인 API ---
+/**
+ * POST /api/admin/login
+ * 관리자 계정으로 로그인하고 인증 토큰을 획득
+ */
+export async function adminLogin(email, password) {
+    const endpoint = "/api/admin/login";
+    console.log(`Attempting admin login for: ${email}...`);
+    
+    const requestBody = {
+        email: email,
+        password: password,
+    };
+
+    try {
+        const response = await apiRequest(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            }, 
+            body: JSON.stringify(requestBody), 
+        });
+        
+        // 로그인 성공 시 응답 예시: { "success": true, "message": "string", "email": "string", "role": "ADMIN"}
+        return response; 
+        
+    } catch (error) {
+        console.error(`Error during admin login for ${email}:`, error.message);
+        throw error;
+    }
+}
+
+/*
+// --- 9. 관리자 로그인 API (수정된 버전: Basic 인증 헤더 제외) ---
+export async function adminLogin(email, password) {
+    const url = `${BASE_URL}/api/admin/login`; // BASE_URL 사용
+    const requestBody = { email, password };
+    
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                // Authorization 헤더를 포함하지 않음
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+            throw new Error(errorData.message || `Login failed with status ${response.status}`);
+        }
+
+        return await response.json(); 
+        
+    } catch (error) {
+        console.error(`Error during admin login for ${email}:`, error.message);
+        throw error;
+    }
+}
+*/
+
 export default {
     submitLibraryCardApproval,
     getAllAuthRequests,
@@ -190,4 +260,6 @@ export default {
     getRejectionReasons,
     rejectAuthRequestByApproveEndpoint,
     getCompletedAuthRequests,
+    getAuthRequestImage, 
+    adminLogin,
 };

@@ -2,26 +2,68 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import IconBig from "../assets/icon/icon_big.svg";
-// API 함수 임포트 (경로 확인 필수)
-import { getAllAuthRequests, approveAuthRequest, getCompletedAuthRequests } from "../api/Admin";
+import { 
+    getAllAuthRequests, 
+    approveAuthRequest, 
+    getCompletedAuthRequests, 
+    getAuthRequestImage
+} from "../api/Admin";
 
 // 승인 요청 카드를 렌더링하는 개별 컴포넌트
-const ApprovalCard = ({ authId, name, studentId, onApprove }) => {
-    // 이미지 placeholder (나중에 API 연결 )
-    const imagePlaceholder = (
-        <div className="w-full h-[180px] bg-[#D9D9D9] rounded-lg"></div>
-    );
+const ApprovalCard = ({ authId, name, studentId, onApprove, onRejectDetail }) => {
+    const [imageUrl, setImageUrl] = useState(null);
+    const [imageLoading, setImageLoading] = useState(true);
+    const [imageError, setImageError] = useState(false);
 
-    // 승인 버튼 클릭 핸들러
+    // 이미지 로딩 함수
+    useEffect(() => {
+        const fetchImage = async () => {
+            setImageLoading(true);
+            setImageError(false);
+            try {
+                // 8. 인증 요청 이미지 조회 API 호출
+                const base64String = await getAuthRequestImage(authId);
+                
+                // Base64 문자열을 Data URI로 변환 (PNG 형식이라고 가정)
+                const dataUri = `data:image/png;base64,${base64String}`;
+                setImageUrl(dataUri);
+            } catch (err) {
+                console.error(`이미지 로드 실패 (ID: ${authId}):`, err);
+                setImageError(true);
+            } finally {
+                setImageLoading(false);
+            }
+        };
+        fetchImage();
+    }, [authId]);
+
+
     const handleApproveClick = () => {
         if (window.confirm(`${name} (${studentId}) 님의 승인 요청을 처리하시겠습니까?`)) { 
             onApprove(authId);
         }
     };
 
+    /*
+    // 이미지 placeholder (나중에 API 연결 )
+    const imagePlaceholder = (
+        <div className="w-full h-[180px] bg-[#D9D9D9] rounded-lg"></div>
+    );
+    */
+
+    const imageContent = () => {
+        if (imageLoading) {
+            return <div className="w-full h-[180px] bg-[#D9D9D9] rounded-lg flex items-center justify-center text-black-50 text-body-regular-16">이미지 로딩 중...</div>;
+        }
+        if (imageError || !imageUrl) {
+            return <div className="w-full h-[180px] bg-red-100 rounded-lg flex items-center justify-center text-red-500 text-body-regular-16">이미지 로드 실패</div>;
+        }
+        return <img src={imageUrl} alt={`인증 이미지: ${name}`} className="w-full h-[180px] object-cover rounded-lg"/>;
+    };
+
     return (
         <div className="flex flex-col bg-white shadow-sm">
-            {imagePlaceholder}
+            {imageContent()}
             <div className="p-2 mt-1 border border-black-10 bg-black-10 rounded-lg">
                 <p className="text-body-bold-16 text-black-40">
                     이름
@@ -62,6 +104,11 @@ export default function AdminHomeScreen() {
     // 탭 확장 
     const handleExpandClick = () => {
         navigate('/admin-home-big');
+    };
+
+    const handleRejectDetail = (authId) => {
+        // 반려 사유 선택/입력 화면으로 이동 (혹은 AdminHomeBigScreen으로 상세 요청 ID와 함께 이동)
+        navigate(`/admin-home-big?authId=${authId}`); 
     };
 
     /*
