@@ -1,7 +1,7 @@
 // 택시팟 멤버 상위 페이지 
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { getCurrentUserId } from '../api/token';
 import { getTaxiPartyInfo } from '../api/chat'; 
 import TaxiSwuScreen from './TaxiSwuScreen'
@@ -21,6 +21,9 @@ const ErrorScreen = ({ message }) => (
 
 export default function MemberListScreen() {
     const { partyId } = useParams();
+    const location = useLocation();
+    const chatRoomId = location.state?.chatRoomId;
+
     const [isHost, setIsHost] = useState(null); // null: 로딩 중
     const currentUserId = getCurrentUserId();
     const partyIdNum = parseInt(partyId, 10);
@@ -65,8 +68,8 @@ export default function MemberListScreen() {
 
     // 역할에 따라 최종 컴포넌트 렌더링
     if (isHost) {
-        return <TaxiMemberScreen />;
+        return <TaxiMemberScreen chatRoomId={chatRoomId} />;
     } else {
-        return <TaxiSwuScreen />;
+        return <TaxiSwuScreen chatRoomId={chatRoomId} />;
     }
 }
