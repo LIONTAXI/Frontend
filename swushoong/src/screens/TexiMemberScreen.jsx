@@ -9,7 +9,7 @@ import { getPartyMembersWithReviewStatus, kickPartyMember } from "../api/review"
 import { getCurrentUserId } from '../api/token';
 
 
-export default function TaxiMemberScreen() {
+export default function TaxiMemberScreen({chatRoomId}) {
 
     const { partyId } = useParams();
     const currentUserId = getCurrentUserId(); // 토큰에서 사용자 ID를 가져옴
@@ -19,6 +19,7 @@ export default function TaxiMemberScreen() {
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
 
     // 유효성 검사
     if (!currentUserId) {
@@ -63,6 +64,12 @@ export default function TaxiMemberScreen() {
         fetchMembers();
     }, [fetchMembers]); // fetchMembers가 변경될 때마다 실행
 
+    const handleBackToChat = () => {
+        // navigate(-1)는 브라우저 기록에서 바로 이전 페이지로 돌아갑니다.
+        // 이 경우 'TaxiMemberScreen' 직전 페이지인 'ChatScreen'이 됩니다.
+        navigate(-1);
+    };
+
     // 내보내기(강퇴) 핸들러 구현
     const handleOutMember = async (member) => {
         if (member.isMe) {
@@ -99,16 +106,21 @@ export default function TaxiMemberScreen() {
         // /review-all/:taxiPartyId/:revieweeId 로 이동
         // 강퇴는 본인 제외이므로 isMe 체크는 불필요하지만, 안전을 위해 추가
         if (!member.isMe) {
+            console.log("--- 총대 후기 작성 시도 ---");
+            console.log(`Prop으로 받은 chatRoomId: ${chatRoomId}`);
             // member.userId는 후기 대상 (revieweeId)
             navigate(`/review-all/${taxiPartyId}/${member.userId}`);
         }
     };
 
     const handleProfileClick = (memberId) => {
-        console.log(`총대 시점 프로필 클릭: 사용자 ID ${memberId}`);
-        // 프로필 화면 경로로 이동????? 경로를 /member-profile/:userId
-        navigate(`/member-profile/${memberId}`);
-    };
+        console.log(`총대 시점 프로필 클릭: 사용자 ID ${memberId}`);
+        // /member-profile/:userId 로 이동
+        navigate(`/member-profile/${memberId}`, {
+            // ✅ chatRoomId와 partyId를 모두 state로 전달
+            state: { chatRoomId: chatRoomId, partyId: taxiPartyId }
+        });
+    };
 
 
     if (loading) {
@@ -122,7 +134,7 @@ export default function TaxiMemberScreen() {
 
     return (
         <div className="h-full h-screen bg-white font-pretendard flex flex-col"> 
-            <Header title="택시팟 멤버" />
+            <Header title="택시팟 멤버" onBack={handleBackToChat}/>
 
             <div className="bg-white flex flex-col flex-grow w-full space-y-4 px-4">
                 <h1 className="text-head-semibold-20 text-[#000] mt-2">
