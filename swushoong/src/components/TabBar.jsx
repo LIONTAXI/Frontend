@@ -6,7 +6,7 @@ import HomeNone from "../assets/icon/HomeNone.svg";
 import ChatActiv from "../assets/icon/ChatActiv.svg";
 import ChatNone from "../assets/icon/ChatNone.svg";
 import MypageActiv from "../assets/icon/MypageActiv.svg";
-import MypageNone from "../assets/icon/MypageNone.svg";
+import MypageNone from "../assets/icon/MyPageNone.svg";
 
 export default function TabBar({
   active = "home",            // "home" | "chat-list" | "my"

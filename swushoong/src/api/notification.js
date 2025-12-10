@@ -4,9 +4,25 @@ const BASE_URL =
 
 function buildHeaders(options = {}) {
   const isFormData = options.body instanceof FormData;
-  const base = isFormData ? {} : { "Content-Type": "application/json" };
+
+  // 로그인 시 저장된 토큰 읽기
+  const token =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+  // 기본 헤더
+  const headers = isFormData
+    ? {}
+    : {
+        "Content-Type": "application/json",
+      };
+
+  // 토큰이 실제 값일 때만 Authorization 추가
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   return {
-    ...base,
+    ...headers,
     ...(options.headers || {}),
   };
 }
