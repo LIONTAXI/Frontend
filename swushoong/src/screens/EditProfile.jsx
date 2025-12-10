@@ -97,12 +97,10 @@ export default function EditProfile() {
         email: updated.email ?? prev.email,
       }));
 
-      // ⚠️ 여기서는 previewUrl을 서버 URL로 덮어쓰지 않음
       //    -> 방금 선택한 로컬 미리보기 이미지를 계속 유지
       //    -> 나갔다가 다시 들어오면 위 useEffect에서 서버 이미지를 blob으로 다시 불러옴
     } catch (err) {
       console.error("[EditProfile] 프로필 이미지 업로드 실패:", err);
-      // 업로드 실패 시, 로컬 미리보기는 그대로 두고 토스트/알럿은 나중에 추가 가능
     }
   };
 
