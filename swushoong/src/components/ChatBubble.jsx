@@ -1,8 +1,8 @@
 import React from "react";
 
 export default function ChatBubble({
-  side = "left",          // "left" | "right" | "system"
-  variant = "text",       // "text" | "image"
+  side = "left",          // "left" | "right" | "system"
+  variant = "text",       // "text" | "image"
   text = "",
   time = "",
   name = "",
@@ -15,7 +15,7 @@ export default function ChatBubble({
   if (side === "system") {
     return (
       <div className={`w-full flex justify-center ${className}`}>
-        <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 text-black-90 text-center leading-[1.4]">
+        <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 text-black-90 text-center leading-[1.4] whitespace-pre-line">
           {text}
         </div>
       </div>
@@ -80,7 +80,7 @@ export default function ChatBubble({
         "flex items-end gap-2 " + (isLeft ? "" : "justify-end")
       }
     >
-      {isLeft && (variant === "text" || variant === "image") ? (
+      {isLeft ? (
         <>
           {variant === "text" ? <TextBubble /> : <ImageBubble />}
           {time && (
@@ -102,37 +102,37 @@ export default function ChatBubble({
     </div>
   );
 
-  // 💬 왼쪽(상대) / 오른쪽(나)
-  if (isLeft) {
-    return (
-      <div
-        className={`w-full flex justify-start items-end gap-2 ${className}`}
-      >
-        <div className="flex flex-col gap-2">
-          {/* 이름/나이 라인 */}
-          {(name || age) && (
-            <div className="flex items-center gap-2">
-              <Avatar />
-              <span className="text-body-regular-14 text-black-70">
-                {name}
-                {name && age ? " · " : ""}
-                {age}
-              </span>
-            </div>
-          )}
-          {/* 말풍선 + 시간 */}
-          <BubbleRow />
-        </div>
-      </div>
-    );
-  }
+  // 💬 왼쪽(상대)
+  if (isLeft) {
+    return (
+      <div
+        className={`w-full flex justify-start items-start gap-2 ${className}`} // items-end -> items-start
+      >
+        <Avatar /> {/* 아바타 표시 */}
 
-  // 오른쪽(내 메시지) – 아바타/이름 없이 말풍선 + 시간만
-  return (
-    <div
-      className={`w-full flex justify-end items-end ${className}`}
-    >
-      <BubbleRow />
-    </div>
-  );
+        <div className="flex flex-col gap-1"> {/* gap-2 -> gap-1 */}
+          {/* 이름/나이 라인 */}
+          {(name || age) && (
+            <div className="flex items-center">
+              <span className="text-body-regular-14 text-black-70">
+                {name}
+                {age && <span className="text-body-regular-14 text-black-50">. {age}</span>}
+              </span>
+            </div>
+          )}
+          {/* 말풍선 + 시간 */}
+          <BubbleRow />
+        </div>
+      </div>
+    );
+  }
+
+  // 💬 오른쪽(내 메시지) – 아바타/이름 없이 말풍선 + 시간만 (🔥 복원된 로직 🔥)
+  return (
+    <div
+      className={`w-full flex justify-end items-end ${className}`}
+    >
+      <BubbleRow />
+    </div>
+  );
 }

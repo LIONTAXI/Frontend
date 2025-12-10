@@ -67,11 +67,14 @@ async function apiRequest(path, options = {}) {
  * ========================= */
 
 // 유저 위치 및 마지막 활동 시간 업데이트 (PATCH)
-export function updateUserStatus(payload) {
+export function updateUserStatus({ latitude, longitude }) {
   const URI = "/api/map/user-map-update";
   return apiRequest(URI, {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      latitude,
+      longitude,
+    }),
   });
 }
 

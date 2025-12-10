@@ -3,7 +3,8 @@ import React from "react";
 const MailModal = ({ reason, onConfirm, onCancel }) => {
     return (
         // 배경
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-0 flex items-center justify-center z-50
+        absolute inset-0 z-50 flex justify-center items-end bg-black-90/70">
             <div className="bg-white p-4 pt-8 w-[320px] rounded-lg shadow-2xl text-center">
                 
                 {/* 제목 및 사유 */}
