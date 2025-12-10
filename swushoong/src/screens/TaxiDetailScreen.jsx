@@ -158,7 +158,7 @@ export default function TaxiDetailScreen() {
 
     if (requestState === "idle") {
       try {
-        await joinTaxiPot(taxiPotId, USER_ID);
+        await joinTaxiPot(taxiPotId);
         setRequestState("requested");
       } catch (err) {
         console.error("[TaxiDetailScreen] 같이 타기 요청 실패:", err);

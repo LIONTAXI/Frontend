@@ -1,5 +1,5 @@
 // src/components/KakaoMap.jsx
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import MapPicker from "./MapPicker";
 
@@ -19,6 +19,9 @@ export default function KakaoMap({
   const myOverlayRef = useRef(null);
   const hostOverlaysRef = useRef([]);
 
+  // 지도 생성이 끝났는지 표시하는 상태
+  const [mapReady, setMapReady] = useState(false);
+
   // SDK 로드 + 지도 생성
   useEffect(() => {
     const kakaoAppKey = import.meta.env.VITE_KAKAO_MAP_APPKEY;
@@ -34,6 +37,9 @@ export default function KakaoMap({
       const center = new kakao.maps.LatLng(37.617735, 127.091526);
       const options = { center, level: 3 };
       mapInstanceRef.current = new kakao.maps.Map(mapRef.current, options);
+
+      // 지도 생성 완료
+      setMapReady(true);
     };
 
     if (window.kakao && window.kakao.maps) {
@@ -56,7 +62,9 @@ export default function KakaoMap({
 
   // 1) 내 위치 픽커 + 주소 텍스트
   useEffect(() => {
+    if (!mapReady) return;
     if (!mapInstanceRef.current || !userLocation || !window.kakao) return;
+
     const { kakao } = window;
     const { latitude, longitude } = userLocation;
     const pos = new kakao.maps.LatLng(latitude, longitude);
@@ -117,10 +125,11 @@ export default function KakaoMap({
         }
       });
     }
-  }, [userLocation, onAddressChange, isHostMe, centerOn]);
+  }, [userLocation, onAddressChange, isHostMe, centerOn, mapReady]);
 
   // 2) 총대 픽커들(게시글 위치)
   useEffect(() => {
+    if (!mapReady) return;
     if (!mapInstanceRef.current || !window.kakao) return;
     const { kakao } = window;
 
@@ -178,10 +187,11 @@ export default function KakaoMap({
         mapInstanceRef.current.setCenter(centerPos);
       }
     }
-  }, [taxiHosts, selectedTaxiPotId, onSelectTaxiPot, centerOn]);
+  }, [taxiHosts, selectedTaxiPotId, onSelectTaxiPot, centerOn, mapReady]);
 
   // 3) 선택된 택시팟이 바뀌면 그 위치로 지도를 부드럽게 이동
   useEffect(() => {
+    if (!mapReady) return;
     if (!mapInstanceRef.current || !window.kakao) return;
     if (!selectedTaxiPotId) return;
     if (!Array.isArray(taxiHosts) || taxiHosts.length === 0) return;
@@ -193,7 +203,7 @@ export default function KakaoMap({
 
     const pos = new kakao.maps.LatLng(target.latitude, target.longitude);
     mapInstanceRef.current.panTo(pos);
-  }, [selectedTaxiPotId, taxiHosts]);
+  }, [selectedTaxiPotId, taxiHosts, mapReady]);
 
   return <div ref={mapRef} className="mx-0 w-full h-[393px]" />;
 }
