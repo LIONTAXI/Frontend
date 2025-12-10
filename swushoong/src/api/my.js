@@ -1,3 +1,5 @@
+// src/api/my.js
+
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://swushoong.click";
 
@@ -156,4 +158,50 @@ export function getProfileReviewSummary(userId) {
   return apiRequest(path, {
     method: "GET",
   });
+}
+
+/* =========================
+ *  보호된 프로필 이미지 blob URL 헬퍼
+ * ========================= */
+
+// imgPath: "/api/users/3/profile-image" 또는 "https://..."
+// 반환: blob URL (예: "blob:https://localhost:5173/xxxx") 또는 null
+export async function fetchProfileImageWithAuth(imgPath) {
+  if (!imgPath) return null;
+
+  // 토큰 읽기
+  const token =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+  // 절대/상대 경로 모두 지원
+  const url = imgPath.startsWith("http") ? imgPath : `${BASE_URL}${imgPath}`;
+
+  const headers = {};
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  let res;
+  try {
+    res = await fetch(url, { method: "GET", headers });
+  } catch (err) {
+    console.error("[myApi] 프로필 이미지 blob 요청 네트워크 에러:", err);
+    return null;
+  }
+
+  if (!res.ok) {
+    console.error(
+      "[myApi] 프로필 이미지 blob 요청 실패:",
+      res.status
+    );
+    return null;
+  }
+
+  try {
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.error("[myApi] 프로필 이미지 blob 변환 실패:", err);
+    return null;
+  }
 }

@@ -3,7 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import ProfileImg from "../assets/img/profileIMG.svg";
-import { getMyInfo, uploadProfileImage } from "../api/my";
+import {
+  getMyInfo,
+  uploadProfileImage,
+  fetchProfileImageWithAuth,
+} from "../api/my";
 
 export default function EditProfile() {
   const navigate = useNavigate();
@@ -16,7 +20,7 @@ export default function EditProfile() {
 
   // 프로필 기본 정보
   const [profile, setProfile] = useState({
-    imgUrl: null,
+    imgUrl: null, // 서버가 주는 원래 경로 (ex. /api/users/3/profile-image)
     name: "",
     shortStudentId: "",
     email: "",
@@ -25,6 +29,8 @@ export default function EditProfile() {
   // 최초 진입 시 기존 정보 조회
   useEffect(() => {
     if (!USER_ID) return;
+
+    let cancelled = false;
 
     (async () => {
       try {
@@ -39,12 +45,23 @@ export default function EditProfile() {
           email: data.email ?? "",
         };
         setProfile(next);
-        // 🔹 previewUrl 은 건드리지 않음
-        //   -> 기본 이미지는 profile.imgUrl 로 표시됨
+
+        // 🔹 서버에 저장된 기존 프로필 이미지를 blob으로 받아서 미리보기로 사용
+        if (imgFromServer) {
+          const blobUrl = await fetchProfileImageWithAuth(imgFromServer);
+          if (!cancelled && blobUrl) {
+            setPreviewUrl(blobUrl);
+          }
+        }
       } catch (err) {
         console.error("[EditProfile] 프로필 정보 조회 실패:", err);
       }
     })();
+
+    return () => {
+      cancelled = true;
+      // 필요하면 여기서 URL.revokeObjectURL(previewUrl) 정리 가능
+    };
   }, [USER_ID]);
 
   // 프로필 영역 클릭 → 파일 선택창 열기
@@ -80,8 +97,9 @@ export default function EditProfile() {
         email: updated.email ?? prev.email,
       }));
 
-      // 여기서 previewUrl 을 서버 URL로 덮어쓰지 않음
+      // ⚠️ 여기서는 previewUrl을 서버 URL로 덮어쓰지 않음
       //    -> 방금 선택한 로컬 미리보기 이미지를 계속 유지
+      //    -> 나갔다가 다시 들어오면 위 useEffect에서 서버 이미지를 blob으로 다시 불러옴
     } catch (err) {
       console.error("[EditProfile] 프로필 이미지 업로드 실패:", err);
       // 업로드 실패 시, 로컬 미리보기는 그대로 두고 토스트/알럿은 나중에 추가 가능
@@ -107,7 +125,7 @@ export default function EditProfile() {
           className="w-[100px] h-[100px] rounded-full border border-[#D6D6D6] overflow-hidden bg-[#D6D6D6] flex items-center justify-center"
         >
           <img
-            src={previewUrl || profile.imgUrl || ProfileImg}
+            src={previewUrl || ProfileImg}
             alt="프로필 이미지"
             className="w-full h-full object-cover"
           />
