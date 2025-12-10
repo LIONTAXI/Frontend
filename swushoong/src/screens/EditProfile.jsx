@@ -39,11 +39,8 @@ export default function EditProfile() {
           email: data.email ?? "",
         };
         setProfile(next);
-
-        // 서버에 저장된 프로필 이미지가 있으면 미리보기로 사용
-        if (imgFromServer) {
-          setPreviewUrl(imgFromServer);
-        }
+        // 🔹 previewUrl 은 건드리지 않음
+        //   -> 기본 이미지는 profile.imgUrl 로 표시됨
       } catch (err) {
         console.error("[EditProfile] 프로필 정보 조회 실패:", err);
       }
@@ -62,7 +59,7 @@ export default function EditProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 일단 로컬 미리보기
+    // 일단 로컬 미리보기 (blob URL)
     const localUrl = URL.createObjectURL(file);
     setPreviewUrl(localUrl);
 
@@ -83,10 +80,8 @@ export default function EditProfile() {
         email: updated.email ?? prev.email,
       }));
 
-      // 서버에서 URL을 주면 그걸로 덮어쓰기
-      if (imgFromServer) {
-        setPreviewUrl(imgFromServer);
-      }
+      // 여기서 previewUrl 을 서버 URL로 덮어쓰지 않음
+      //    -> 방금 선택한 로컬 미리보기 이미지를 계속 유지
     } catch (err) {
       console.error("[EditProfile] 프로필 이미지 업로드 실패:", err);
       // 업로드 실패 시, 로컬 미리보기는 그대로 두고 토스트/알럿은 나중에 추가 가능
