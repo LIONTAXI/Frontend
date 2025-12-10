@@ -1,62 +1,150 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import MenuIcon from "../assets/icon/icon_menu.svg";
+import { getUserReviewSummary, postBlockUser } from '../api/review'; 
+import { getCurrentUserId } from '../api/token';
 
-// == 더미 데이터 == 
-const dummyProfileData = {
-    nickname: "이슈니",
-    age: 23,
-    rePurchaseRate: 72, // 재매칭 희망률 (%)
-    noSettlementCount: 3, // 미정산 이력 (회)
-    
-    // 받은 매너 평가 
-    positiveReviews: [
-        { text: "약속을 잘 지켜요", count: 21 },
-        { text: "정산이 빨라요", count: 13 },
-        { text: "친절해요", count: 12 },
-    ],
+const ENUM_TO_LABEL = {
+    "PROMISE_ON_TIME": "약속을 잘 지켜요",
+    "RESPONSE_FAST": "응답이 빨라요",
+    "GOOD_MANNER": "매너가 좋아요",
+    "SETTLEMENT_FAST": "정산이 빨라요",
+    "KIND": "친절해요",
+    "INFO_NOTICE_FAST": "정보 공지가 빨라요",
+    "INFO_ACCURATE": "정산 정보가 정확해요",
+    "PROMISE_NOT_KEPT": "약속시간을 지키지 않았어요",
+    "COMMUNICATION_HARD": "소통이 어려웠어요",
+    "MANNER_BAD": "매너가 좋지 않았어요",
+    "SETTLEMENT_LATE": "정산이 느렸어요",
+    "INFO_INACCURATE": "정산 정보가 정확하지 않았어요",
+};
 
-    // 받은 비매너 평가 
-    negativeReviews: [
-        { text: "정산이 느려요", count: 1 },
-    ],
+// == 초기 상태 데이터 ==
+const initialProfileData = {
+    nickname: "",
+    age: '?', // API에 age 필드가 없으므로 임시로 '?' 처리
+    rePurchaseRate: null,
+    noSettlementCount: 0,
+    positiveReviews: [],
+    negativeReviews: [],
 };
 
 export default function ReviewScreen() {
-    const menuItems = [
-        { label: '시용자 차단', onClick: () => {
-            // navigate('/member-profile'); 
-            console.log("사용자 차단 클릭");
-        }},
-    ];
+    const { userId: targetUserIdParam } = useParams();
 
+    const currentUserId = getCurrentUserId();
+    const targetUserId = targetUserIdParam ? parseInt(targetUserIdParam, 10) : currentUserId;
+    
+    const [profileData, setProfileData] = useState(initialProfileData); 
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
     const navigate = useNavigate();
 
-    // 실제 앱에서는 서버에서 데이터를 fetch하고 state에 저장할 예정 
-    const [profileData] = useState(dummyProfileData); 
+    const fetchProfileData = useCallback(async () => {
+        if (!targetUserId || isNaN(targetUserId) || targetUserId <= 0) {
+            setError("유효하지 않은 사용자 ID입니다.");
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const data = await getUserReviewSummary(targetUserId);
+
+            // API 응답 데이터 가공 및 태그 매핑
+            const transformedData = {
+                nickname: data.name || "알 수 없음", 
+                age: data.age || '?', // API에 age 필드가 없으므로 '?'로 유지
+                
+                // 재매칭 희망률: null이면 null로 저장하여 "데이터 없음" 표시 유도
+                rePurchaseRate: data.matchPreferenceRate !== null 
+                    ? data.matchPreferenceRate
+                    : null,
+                    
+                noSettlementCount: data.unpaidCount || 0,
+                
+                // 긍정 평가 태그 변환 (ENUM -> 한글 + 횟수)
+                positiveReviews: data.positiveTagCounts.map(item => ({
+                    text: ENUM_TO_LABEL[item.tag] || item.tag,
+                    count: item.count,
+                })),
+                
+                // 부정 평가 태그 변환 (ENUM -> 한글 + 횟수)
+                negativeReviews: data.negativeTagCounts.map(item => ({
+                    text: ENUM_TO_LABEL[item.tag] || item.tag,
+                    count: item.count,
+                })),
+            };
+
+            setProfileData(transformedData);
+            setError(null);
+
+        } catch (err) {
+            console.error("프로필 데이터 로드 실패:", err);
+            setError(`데이터 로드 실패: ${err.message || '알 수 없는 오류'}`);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [targetUserId]);
+
+    useEffect(() => {
+        fetchProfileData();
+    }, [fetchProfileData]);
 
     const handleBack = () => {
-        // navigate(-1); // 실제 사용 시 이전 페이지로 돌아갑니다.
-        console.log("뒤로가기 클릭");
-    };
+        navigate(-1); // 실제 사용 시 이전 페이지로 돌아갑니다.
 
+    };
 
     // 메뉴 닫기 함수: BottomMenu의 onClose prop에 전달
     const handleCloseMenu = () => {
         setIsMenuOpen(false);
     };
     
+    const handleBlockUser = async () => {
+        handleCloseMenu();
+
+        if (targetUserId === currentUserId) {
+            alert("자기 자신은 차단할 수 없습니다.");
+            return;
+        }
+
+        if (!targetUserId || !currentUserId) {
+             alert("사용자 정보를 확인할 수 없습니다.");
+             return;
+        }
+
+        if (!window.confirm(`${profileData.nickname || '이 사용자'}님을 정말로 차단하시겠습니까?`)) {
+            return;
+        }
+
+        try {
+            await postBlockUser(currentUserId, targetUserId); // blockerId: 나, blockedId: 타겟 사용자
+            
+            alert(`${profileData.nickname || '사용자'} 차단이 완료되었습니다.`);
+            navigate('/'); 
+
+        } catch (error) {
+            console.error("사용자 차단 실패:", error);
+            const errorMessage = error.response?.message || error.message || '알 수 없는 오류';
+            alert(`차단 실패: ${errorMessage}`);
+        }
+    };
+
+    const menuItems = [
+        { label: '사용자 차단', onClick: handleBlockUser },
+    ];
+
     // 평가 뱃지 렌더링을 위한 공통 컴포넌트
     const ReviewBadge = ({ text, count, isNegative = false }) => {
         const countTextColor = isNegative ? "text-[#EA2A11]" : "text-[#FC7E2A]";
     
         // 뱃지 전체 배경색과 기본 텍스트 색상
         const badgeStyle = isNegative
-            ? "bg-black-10 text-black-70" // 비매너 평가: 연한 회색 배경, 회색 텍스트
-            : "bg-[#FFF4DF] text-black-70"; // 매너 평가: 연한 노란색 배경, 회색 텍스트
+            ? "bg-black-10 text-black-70" // 비매너 평가
+            : "bg-[#FFF4DF] text-black-70"; // 매너 평가
         
         return (
             <div className={`
@@ -84,7 +172,7 @@ export default function ReviewScreen() {
             <main className="flex-grow p-4">
                 {/* 2. 프로필 정보 섹션 */}
                 <div className="flex items-center mb-6">
-                    {/* 프로필 이미지 - 추후 서버 연결 후 수정 */}
+                    {/* 프로필 이미지 */}
                     <div className="w-16 h-16 bg-black-20 rounded-full mr-4"></div> 
 
                     {/* 닉네임, 나이 및 평가 지표 */}
@@ -109,27 +197,39 @@ export default function ReviewScreen() {
                 {/* 3. 받은 매너 평가 섹션 */}
                 <h2 className="text-head-semibold-20 text-[#000] my-4">받은 매너 평가</h2>
                 <div className="flex flex-wrap">
-                    {profileData.positiveReviews.map((review, index) => (
-                        <ReviewBadge 
-                            key={`pos-${index}`} 
-                            text={review.text} 
-                            count={review.count} 
-                            isNegative={false} 
-                        />
-                    ))}
+                    {profileData.positiveReviews.length > 0 ? (
+                        profileData.positiveReviews.map((review, index) => (
+                            <ReviewBadge 
+                                key={`pos-${index}`} 
+                                text={review.text} 
+                                count={review.count} 
+                                isNegative={false} 
+                            />
+                        ))
+                    ) : (
+                        <p className="text-body-semibold-14 text-black-50 py-0">
+                            받은 매너 평가가 없습니다.
+                        </p> 
+                    )}
                 </div>
 
                 {/* 4. 받은 비매너 평가 섹션 */}
                 <h2 className="text-head-semibold-20 text-[#000] my-4 mt-14">받은 비매너 평가</h2>
                 <div className="flex flex-wrap">
-                    {profileData.negativeReviews.map((review, index) => (
-                        <ReviewBadge 
-                            key={`neg-${index}`} 
-                            text={review.text} 
-                            count={review.count} 
-                            isNegative={true} 
-                        />
-                    ))}
+                    {profileData.negativeReviews.length > 0 ? (
+                        profileData.negativeReviews.map((review, index) => (
+                            <ReviewBadge 
+                                key={`neg-${index}`} 
+                                text={review.text} 
+                                count={review.count} 
+                                isNegative={true} 
+                            />
+                        ))
+                    ) : (
+                        <p className="text-body-semibold-14 text-black-50 py-0">
+                            받은 비매너 평가가 없습니다.
+                        </p>
+                    )}
                 </div>
 
             </main>
@@ -158,7 +258,6 @@ export default function ReviewScreen() {
                                     className="w-full text-left px-4 py-3 border-b border-black-15 text-body-regular-16 text-black-90"
                                     onClick={() => {
                                         item.onClick();
-                                        handleCloseMenu(); // 메뉴 클릭 후 닫기
                                     }}
                                 >
                                     {item.label}

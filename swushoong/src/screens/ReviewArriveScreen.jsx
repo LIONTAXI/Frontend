@@ -1,71 +1,130 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import Header2 from "../components/Header2";
-import BottomMenu from "../components/BottomMenu";
 import Profile from "../assets/img/profileIMG.svg";
 
-// == 더미 데이터 ==
-const dummyProfileData = {
-    nickname: "김슈니",
-    age: 23,
-    rePurchaseRate: 97, // 재매칭 희망률 (%)
-    noSettlementCount: 0, // 미정산 이력 (회)
-    
-    // 받은 매너 평가 
-    positiveReviews: [
-        { text: "약속을 잘 지켜요" },
-        { text: "정산이 빨라요" },
-        { text: "친절해요"},
-    ],
+import { getReviewDetail } from '../api/review';
+import { getCurrentUserId } from '../api/token';
 
-    // 받은 비매너 평가 
-    negativeReviews: [
 
-    ],
+const TAG_LABEL_TO_ENUM = {
+    "약속을 잘 지켜요": "PROMISE_ON_TIME",
+    "응답이 빨라요": "RESPONSE_FAST",
+    "매너가 좋아요": "GOOD_MANNER",
+    "정산이 빨라요": "SETTLEMENT_FAST",
+    "친절해요": "KIND",
+    "정보 공지가 빨라요": "INFO_NOTICE_FAST",
+    "정산 정보가 정확해요": "INFO_ACCURATE",
+    "약속시간을 지키지 않았어요": "PROMISE_NOT_KEPT",
+    "소통이 어려웠어요": "COMMUNICATION_HARD",
+    "매너가 좋지 않았어요": "MANNER_BAD",
+    "정산이 느렸어요": "SETTLEMENT_LATE",
+    "정산 정보가 정확하지 않았어요": "INFO_INACCURATE",
 };
 
+// ENUM -> LABEL 역방향 매핑 객체 생성 
+const ENUM_TO_LABEL = Object.entries(TAG_LABEL_TO_ENUM).reduce((acc, [label, enumName]) => {
+    acc[enumName] = label;
+    return acc;
+}, {});
+
+// == (초기 상태용) ==
+const initialProfileData = {
+    nickname: "", // 리뷰를 보낸 사람 (reviewer) 이름
+    shortStudentId: "", // 리뷰를 보낸 사람의 학번 끝 2자리 (age 필드 대체)
+    rePurchaseRate: null, // 재매칭 희망률
+    noSettlementCount: 0, // 미정산 이력
+    positiveReviews: [], // 긍정 태그 리스트 (표시용)
+    negativeReviews: [], // 부정 태그 리스트 (표시용)
+    // 네비게이션을 위해 필요한 데이터
+    taxiPartyId: null, 
+    reviewerId: null, 
+    canWriteBack: false, // API 응답의 canWriteBack 필드
+};
+
+
 export default function ReviewArriveScreen() {
-    const menuItems = [
-        { label: '시용자 차단', onClick: () => {
-            // navigate('/member-profile'); 
-        }},
-    ];
+    const { reviewId } = useParams();
 
-    // 실제로는 서버에서 데이터를 fetch하고 state에 저장할 예정 
-    const [profileData] = useState(dummyProfileData); 
+    const [profileData, setProfileData] = useState(initialProfileData); 
+    const [isLoading, setIsLoading] = useState(true); // 로딩 상태
+    const [error, setError] = useState(null); // 에러 상태
 
-    const [isMenuOpen, setIsMenuOpen] = useState(false); // 메뉴 토글 
+    const [isSubmitEnabled] = useState(true);
+    //const [isUserReviewed, setIsUserReviewed] = useState(false);
+    const navigate = useNavigate();
 
-    const [isSubmitEnabled] = useState(true); // 확인 버튼 활성화 상태 (항상 활성화 가정) 
+    const fetchReviewDetail = useCallback(async () => {
+        if (!reviewId) {
+            setError("후기 ID가 없습니다. (URL 경로 오류)");
+            setIsLoading(false);
+            return;
+        }
 
-    const [isUserReviewed, setIsUserReviewed] = useState(false); // 후기 작성 여부 
+        try {
+            const data = await getReviewDetail(reviewId);
+            
+            const transformedData = {
+                nickname: data.reviewerName || "사용자",
+                shortStudentId: data.reviewerShortStudentId || "", // 학번 끝 2자리 사용
+                
+                // 후기 요약 정보
+                rePurchaseRate: data.matchPreferenceRate !== null
+                    ? data.matchPreferenceRate
+                    : null,
+                noSettlementCount: data.unpaidCount || 0,
+                
+                // 긍정 태그 변환: ENUM -> 한글 라벨 (단일 후기는 횟수가 없으므로 횟수 제외)
+                positiveReviews: data.positiveTags.map(tag => ({
+                    text: ENUM_TO_LABEL[tag] || tag,
+                    originalText: ENUM_TO_LABEL[tag]
+                })),
+                
+                // 부정 태그 변환: ENUM -> 한글 라벨 (단일 후기는 횟수가 없으므로 횟수 제외)
+                negativeReviews: data.negativeTags.map(tag => ({
+                    text: ENUM_TO_LABEL[tag] || tag,
+                    originalText: ENUM_TO_LABEL[tag]
+                })),
 
-    const navigate = useNavigate(); // 페이지 이동 
+                // 네비게이션 및 버튼 로직용
+                taxiPartyId: data.taxiPartyId,
+                reviewerId: data.reviewerId,
+                canWriteBack: data.canWriteBack,
+            };
+
+            setProfileData(transformedData);
+            setError(null);
+
+        } catch (err) {
+            console.error("후기 상세 정보 로드 실패:", err);
+            setError(`후기 로드 실패: ${err.message || '알 수 없는 오류'}`);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [reviewId]);
+
+    useEffect(() => {
+        fetchReviewDetail();
+    }, [fetchReviewDetail]);
 
     const handleBack = () => {
-        // navigate(-1); // 실제 사용 시 이전 페이지로 돌아갑니다.
+        navigate(-1); 
         console.log("뒤로가기 클릭");
     };
 
-    // 메뉴 열기 
-    const handleOpenMenu = () => {
-        console.log("메뉴 클릭");
-        setIsMenuOpen(true);
-    };
-
-    // 메뉴 닫기 
-    const handleCloseMenu = () => {
-        setIsMenuOpen(false);
-    };
 
     // 버튼 클릭 
     const handleButtonClick = () => {
-        if (isUserReviewed) {
-            console.log("확인 버튼 클릭: 페이지 닫기 또는 이동");
-            // navigate('/'); 예시
-        } else {
+        if (profileData.canWriteBack) {
             console.log("나도 후기 작성하러 가기 클릭: 후기 작성 페이지로 이동");
-            // navigate('/write-review'); 예시 
+            
+            // 후기 작성 페이지로 이동 시, 택시 파티 ID와 리뷰 대상자 ID(리뷰를 보낸 사람, 즉 data.reviewerId)를 전달합니다.
+            // 라우트: /review-all/{taxiPartyId}/{targetUserId}
+            navigate(`/review-all/${profileData.taxiPartyId}/${profileData.reviewerId}`);
+            
+        } else {
+            console.log("확인 버튼 클릭: 이전 페이지로 이동");
+            navigate(-1); // 이전 페이지로 복귀
         }
     };
     
@@ -88,10 +147,26 @@ export default function ReviewArriveScreen() {
         );
     }
 
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-screen text-head-semibold-20">
+                데이터를 불러오는 중...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex justify-center items-center h-screen text-head-semibold-20 text-[#EA2A11]">
+                {error}
+            </div>
+        );
+    }
+
     return (
-        <div className="relative min-h-screen bg-white px-4 font-pretendard flex flex-col">
+        <div className="relative w-[393px] h-screen bg-white px-4 font-pretendard flex flex-col">
             {/* 1. 상단 헤더 */}
-            <Header2 title="후기 도착" onBack={handleBack} onMenu={handleOpenMenu} />
+            <Header2 title="후기 도착" onBack={handleBack} onMenu />
 
             <main className="flex-grow p-4 pb-24">
                 <div className="flex text-head-semibold-20 text-[#000] mb-3">
@@ -100,14 +175,14 @@ export default function ReviewArriveScreen() {
 
                 {/* 2. 프로필 정보 섹션 */}
                 <div className="flex items-center mb-14 bg-black-10 px-4 py-3 rounded">
-                    {/* 프로필 이미지 - 추후 서버 연결 후 수정 */}
+                    {/* 프로필 이미지 */}
                     <div className="w-[50px] h-[50px] bg-black-20 rounded-full mr-2"><img src={Profile} alt="프로필" /></div> 
 
                     {/* 닉네임, 나이 및 평가 */}
                     <div>
                         <div className="flex items-center mb-1">
                             <span className="text-head-semibold-20 text-black-70 mr-2">{profileData.nickname}</span>
-                            <span className="text-head-semibold-20 text-black-70">· {profileData.age}</span>
+                            <span className="text-head-semibold-20 text-black-70">· {profileData.shortStudentId}</span>
                         </div>
                         <div className="flex text-sm">
                             <span className="text-black-70 text-body-regular-14 mr-1">재매칭 희망률</span>
@@ -172,15 +247,10 @@ export default function ReviewArriveScreen() {
                         }
                     `}
                 >
-                    {isUserReviewed ? '확인' : '나도 후기 작성하러 가기'}
+                    {/* canWriteBack에 따라 버튼 텍스트 변경 */}
+                    {profileData.canWriteBack ? '나도 후기 작성하러 가기' : '확인'} 
                 </button>
             </div>
-
-            <BottomMenu
-                    isOpen={isMenuOpen}      // 상태 값 전달
-                    onClose={handleCloseMenu} // 닫기 함수 전달
-                    menuItems={menuItems}   // 메뉴 항목 리스트 전달
-            />
         </div>
     );
 }

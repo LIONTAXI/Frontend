@@ -2,9 +2,9 @@
 
 import React from "react";
 import IconPin2 from '../assets/icon/icon_pin2.svg';
-import IconPeople from '../assets/icon/icon_people.svg';
+import IconPeople2 from '../assets/icon/icon_people2.svg';
 
-const MatchInfo = ({ destination, departureIcon, departure, departureTime, members, estimatedFare }) => (
+const MatchInfo = ({ destination, departureIcon, departure, departureTime, currentParticipants,maxParticipants, estimatedFare }) => (
     <div className="bg-black-10 px-4 py-3 rounded border-black-10 w-[361px]">
         <div className="flex items-center mb-2">
             <span className="text-xl">
@@ -33,9 +33,15 @@ const MatchInfo = ({ destination, departureIcon, departure, departureTime, membe
             </div>
 
             <div className="flex items-center">
-                <img src={IconPeople} alt="인원" />
-                <span className="text-body-semibold-14 text-black-70 ml-1">
-                    {members}
+                <img src={IconPeople2} alt="인원" />
+                <span className="text-body-semibold-14 ml-1">
+                    {/* currentParticipants에만 원하는 색상 클래스 적용 (예: text-primary-50) */}
+                    <span className="text-[#FC7E2A]">
+                        {currentParticipants}
+                    </span>
+                    <span className="text-black-70">
+                        /{maxParticipants}
+                    </span>
                 </span>
             </div>
 

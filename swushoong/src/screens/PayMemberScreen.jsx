@@ -1,22 +1,16 @@
+// 정산 정보 확인 페이지 (참여자용-동승슈니)
+
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import IconCopy from "../assets/icon/icon_copy.svg";
-
-// 더미 데이터 정의 
-const DUMMY_FARE = 5000;
-
-const DUMMY_MEMBERS = [
-    { name: "이슈니 · 23 (나)", amount: 1250, isMe: true },
-    { name: "박슈니 · 23", amount: 1250, isMe: false },
-    { name: "임슈니 · 23", amount: 1250, isMe: false },
-    { name: "김슈니 · 21", amount: 1250, isMe: false },
-];
-
-const DUMMY_ACCOUNT = "슈니은행 393-401-4953";
+import { getSettlementDetails } from "../api/settlements";
+// 현재 로그인 유저 ID를 가져오는 함수
+import { getCurrentUserId } from "../api/token";
 
 // 금액을 천 단위 콤마와 '원' 단위로 포맷팅하는 함수
 const formatCurrency = (amount) => {
+    if (typeof amount !== 'number' || isNaN(amount) || amount === null) return '0';
     return `${amount.toLocaleString()}`;
 };
 
@@ -24,21 +18,83 @@ const formatCurrency = (amount) => {
 export default function PayMemberScreen() {
     const navigate = useNavigate();
     
-    // 합계 금액 계산
-    const totalPayment = DUMMY_MEMBERS.reduce((sum, member) => sum + member.amount, 0);
+    const [settlementData, setSettlementData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     
+    // 실제 ID를 가져옵니다.
+    const currentUserId = getCurrentUserId(); 
+    
+    // 정산 ID를 URL 파라미터나 state에서 가져와야 하지만, 여기서는 임시로 고정값/저장된 값 사용
+    const settlementId = localStorage.getItem("currentSettlementId") || 3; 
+
+    // API 연결: 정산 상세 정보 불러오기
+    const loadSettlementDetails = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        
+        if (!settlementId) {
+            setError("❌ 정산 ID를 찾을 수 없습니다.");
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            // API 호출: 정산 상세 조회 (GET /api/settlements/{settlementId})
+            const data = await getSettlementDetails(parseInt(settlementId, 10));
+            setSettlementData(data);
+        } catch (err) {
+            const errorMessage = err.response?.message || "정산 정보를 불러오는 데 실패했습니다.";
+            console.error("❌ 정산 상세 조회 실패:", errorMessage, err);
+            setError(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [settlementId]);
+
+    useEffect(() => {
+        loadSettlementDetails();
+    }, [loadSettlementDetails]);
+
+    if (isLoading) return <div className="text-center p-8 text-black-90">정산 정보를 불러오는 중...</div>;
+    if (error || !settlementData) return <div className="text-center p-8 text-red-500">{error || "정산 정보가 없습니다."}</div>;
+
+    // API 데이터 구조 분해 및 가공
+    const { totalFare, bankName, accountNumber, participants } = settlementData;
+    const displayFare = totalFare;
+    const displayAccount = `${bankName} ${accountNumber}`;
+
+    const displayMembers = participants.map(p => {
+        const isMe = p.userId === currentUserId; // 현재 유저 ID와 비교
+        return {
+            ...p,
+            name: `${p.name} · ${p.shortStudentId} ${isMe ? '(나)' : ''}`, 
+            isMe: isMe,
+        }
+    });
+
+    // 합계 금액 계산
+    const totalPayment = displayMembers.reduce((sum, member) => sum + member.amount, 0);
+
+    // 계좌 복사 핸들러
+    const handleCopyAccount = () => {
+        const textToCopy = displayAccount;
+        navigator.clipboard.writeText(textToCopy);
+        alert(`계좌 정보가 복사되었습니다: ${textToCopy}`);
+    };
+
     return (
         <div className="h-full w-full bg-white max-w-[393px] mx-auto font-pretendard flex flex-col"> 
             <Header title="정산 정보" />
 
-            {/* 2. 지불한 택시비 및 계좌 정보 (이미지 상단) */}
+            {/* 2. 지불한 택시비 및 계좌 정보 */}
             <div className="flex-col flex-grow w-full space-y-4 px-4 py-4">
                 <div className="w-full space-y-3">
                     {/* 택시비 */}
                     <div className="flex items-center">
                         <span className="text-head-semibold-20 text-black-40 mr-1">택시비</span>
                         <span className="text-head-semibold-20 text-[#FC7E2A]">
-                            {formatCurrency(DUMMY_FARE)}원
+                            {formatCurrency(displayFare)}원
                         </span>
                     </div>
 
@@ -47,11 +103,11 @@ export default function PayMemberScreen() {
                         <span className="text-head-semibold-20 text-black-40 mr-1">계좌정보</span>
                         <div className="flex items-center">
                             <span className="text-head-semibold-20 text-black-90">
-                                {DUMMY_ACCOUNT}
+                                {displayAccount}
                             </span>
                             <button
                                 className="flex items-center" 
-                                onClick={() => {navigator.clipboard.writeText(DUMMY_ACCOUNT);}}
+                                onClick={handleCopyAccount}
                             >
                                 <img src={IconCopy} alt="복사" className="ml-2" /> {/* 이미지 크기 명시 권장 */}
                             </button>
@@ -70,10 +126,11 @@ export default function PayMemberScreen() {
 
                 {/* 멤버 리스트 */}
                 <div className="space-y-4">
-                    {DUMMY_MEMBERS.map((member, index) => (
-                        <div key={index} className="flex justify-between items-center">
+                    {displayMembers.map((member) => (
+                        <div key={member.userId} className="flex justify-between items-center">
                             {/* 프로필 이미지*/}
                             <div className="flex items-center gap-2">
+                                {/* member.imgUrl이 있다면 사용. 현재는 더미 배경색 유지 */}
                                 <div className={`w-10 h-10 rounded-full ${
                                     member.isMe ? 'border border-[#FC7E2A] bg-[#D6D6D6]' : 'bg-[#D6D6D6]'
                                 }`}></div>
