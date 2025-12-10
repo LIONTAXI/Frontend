@@ -10,13 +10,19 @@ import ExpandIcon from "../assets/icon/icon_expend.svg";
 import ContractIcon from "../assets/icon/icon_contraction.svg";
 import IconPin2 from "../assets/icon/icon_pin2.svg";
 import KakaoMap from "../components/KakaoMap";
+import { getUnreadNotificationCount } from "../api/notification";
 
-import { getTaxiPotList, updateUserStatus } from "../api/taxi";
+import {
+  getTaxiPotList,
+  getTaxiPotDetail,
+  updateUserStatus,
+  getCurrentUsers,
+} from "../api/taxi";
 
 export default function HomeScreen() {
   const navigate = useNavigate();
 
-  const hasNotification = false;
+  const [hasNotification, setHasNotification] = useState(false);
   const [viewMode, setViewMode] = useState("compact"); // compact | expanded
 
   // 헤더에 표시할 위치 문구
@@ -27,80 +33,138 @@ export default function HomeScreen() {
   // 택시팟 목록
   const [taxiPots, setTaxiPots] = useState([]);
   const [selectedPotId, setSelectedPotId] = useState(null);
-  // 지도에 찍을 마커(택시팟 기준)
+
+  // 지도에 찍을 총대 마커
   const [hostMarkers, setHostMarkers] = useState([]);
 
-  // ---- 1) 내 위치 추적 + /api/map/user-map-update ----
+  // 로그인 유저 id (총대 여부 판별용)
+  const rawUserId = localStorage.getItem("userId");
+  const USER_ID = rawUserId ? Number(rawUserId) : null;
+
+  /* ======================
+   *  0) 미확인 알림 개수 조회
+   * ====================== */
   useEffect(() => {
-    // TODO: 실제 로그인 유저 ID 로 교체
-    const USER_ID = 1;
+    if (!USER_ID) return;
 
-    if ("geolocation" in navigator) {
-      const watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          setUserLocation({ latitude, longitude });
+    let isMounted = true;
 
-          updateUserStatus({
-            userId: USER_ID,
-            latitude,
-            longitude,
-          }).catch((err) => {
-            console.error("[HomeScreen] 유저 상태 업데이트 실패:", err);
-          });
-        },
-        (error) => {
-          console.error("[HomeScreen] 위치 정보 가져오기 실패:", error);
-          setStationLabel("위치 정보를 가져올 수 없어요");
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 5000,
+    async function fetchUnread() {
+      try {
+        const count = await getUnreadNotificationCount(USER_ID);
+        if (isMounted) {
+          setHasNotification(count > 0);
         }
-      );
-
-      // 언마운트 시 watch 해제
-      return () => {
-        if (watchId != null) {
-          navigator.geolocation.clearWatch(watchId);
-        }
-      };
-    } else {
-      setStationLabel("위치 서비스 미지원");
+      } catch (err) {
+        console.error("[HomeScreen] 미확인 알림 개수 조회 실패:", err);
+      }
     }
+
+    fetchUnread();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [USER_ID]);
+
+  /* ======================
+   *  1) 내 위치 추적
+   * ====================== */
+  useEffect(() => {
+    if (!("geolocation" in navigator)) {
+      setStationLabel("위치 서비스 미지원");
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUserLocation({ latitude, longitude });
+
+        // 백엔드에 현재 위치 전송 (토큰으로 유저 구분)
+        updateUserStatus({
+          latitude,
+          longitude,
+        }).catch((err) => {
+          console.error("[HomeScreen] 유저 상태 업데이트 실패:", err);
+        });
+      },
+      (error) => {
+        console.error("[HomeScreen] 위치 정보 가져오기 실패:", error);
+        setStationLabel("위치 정보를 가져올 수 없어요");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000,
+      }
+    );
+
+    return () => {
+      if (watchId != null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
-  // ---- 2) 택시팟 목록 조회 → 카드 + 마커 생성 ----
+  /* ======================
+   *  2) 택시팟 + 현재 접속 유저 + 각 택시팟 상세
+   * ====================== */
   useEffect(() => {
     async function fetchData() {
       try {
-        const potsRes = await getTaxiPotList();
+        // 1차: 목록 & 현재 접속 유저
+        const [potsRes, usersRes] = await Promise.all([
+          getTaxiPotList(),
+          getCurrentUsers(),
+        ]);
+
         const pots = Array.isArray(potsRes) ? potsRes : [];
+        const users = Array.isArray(usersRes) ? usersRes : [];
 
-        // 카드용 택시팟 정보 + 위치 추출
-        const mappedPots = pots.map((item) => {
-          // 백엔드에서 어떤 이름으로 보내는지 모르니 여러 후보 다 체크
-          const lat =
-            item.latitude ??
-            item.lat ??
-            item.meetingLatitude ??
-            item.boardingLatitude ??
-            null;
-          const lng =
-            item.longitude ??
-            item.lng ??
-            item.meetingLongitude ??
-            item.boardingLongitude ??
-            null;
+        // 2차: 각 택시팟 상세 정보 가져와서 hostId / 좌표 채우기
+        const detailList = await Promise.all(
+          pots.map((p) =>
+            getTaxiPotDetail(p.id).catch((err) => {
+              console.error(
+                "[HomeScreen] getTaxiPotDetail 실패 - id:",
+                p.id,
+                err
+              );
+              return null;
+            })
+          )
+        );
 
+        // 카드에 쓸 정보 + hostId/좌표/이모지 정리
+        const mappedPots = pots.map((item, index) => {
+          const detail = detailList[index];
+
+          // hostId 후보 (목록 → 상세 순으로 채우기)
           const hostId =
             item.hostId ??
             item.hostUserId ??
-            item.host?.userId ??
-            item.host?.id ??
+            (typeof item.host === "object"
+              ? item.host.userId ?? item.host.id
+              : item.host) ??
             item.userId ??
+            detail?.hostId ??
+            detail?.hostUserId ??
+            (typeof detail?.host === "object"
+              ? detail.host.userId ?? detail.host.id
+              : detail?.host) ??
             null;
+
+          const latitude =
+            item.latitude ?? detail?.latitude ?? detail?.lat ?? null;
+          const longitude =
+            item.longitude ?? detail?.longitude ?? detail?.lng ?? null;
+
+          const emoji = item.emoji ?? detail?.emoji ?? null;
+
+          const isOwner =
+            item.isOwner === true ||
+            (USER_ID != null && hostId != null && hostId === USER_ID);
 
           return {
             id: item.id,
@@ -114,47 +178,81 @@ export default function HomeScreen() {
               item.expectedPrice != null
                 ? `${Number(item.expectedPrice).toLocaleString()}원`
                 : "",
-            emoji: item.emoji,
-            isOwner: item.isOwner === true,
-            latitude: lat,
-            longitude: lng,
+            emoji,
+            isOwner,
+            latitude,
+            longitude,
           };
         });
 
-        // 지도에 찍을 마커 (택시팟 meeting 위치 기준)
+        // 지도에 찍을 총대 마커
         const markers = mappedPots
-          .filter(
-            (pot) =>
-              pot.latitude != null &&
-              pot.longitude != null &&
-              !Number.isNaN(pot.latitude) &&
-              !Number.isNaN(pot.longitude)
-          )
-          .map((pot) => ({
-            id: pot.id, // 선택 기준
-            latitude: pot.latitude,
-            longitude: pot.longitude,
-            emoji: pot.emoji || "🟠",
-          }));
+          .map((pot) => {
+            let lat = null;
+            let lng = null;
+            let emoji = pot.emoji;
+
+            // (1) hostId와 /api/map 유저가 매칭되면, 그 위치 + markerEmoji 사용
+            if (pot.hostId != null) {
+              const u = users.find((user) => {
+                const uid = user.userId ?? user.id ?? user.user?.id;
+                return uid === pot.hostId;
+              });
+              if (u) {
+                lat = u.latitude ?? u.lat ?? null;
+                lng = u.longitude ?? u.lng ?? null;
+                emoji = u.markerEmoji ?? u.emoji ?? emoji;
+              }
+            }
+
+            // (2) 그래도 없으면, 택시팟에 저장된 좌표 사용
+            if (lat == null || lng == null) {
+              if (pot.latitude != null && pot.longitude != null) {
+                lat = pot.latitude;
+                lng = pot.longitude;
+              }
+            }
+
+            if (lat == null || lng == null) return null;
+
+            return {
+              id: pot.id,
+              latitude: lat,
+              longitude: lng,
+              emoji,
+            };
+          })
+          .filter(Boolean);
 
         console.log("[HomeScreen] mappedPots:", mappedPots);
+        console.log("[HomeScreen] users(/api/map):", users);
         console.log("[HomeScreen] hostMarkers:", markers);
 
         setTaxiPots(mappedPots);
         setHostMarkers(markers);
 
-        // 기본 선택: 첫 번째 택시팟
-        if (mappedPots.length > 0) {
+        // 초기 선택: 마커가 있으면 그 중 첫 번째, 없으면 첫 번째 택시팟
+        if (markers.length > 0) {
+          setSelectedPotId(markers[0].id);
+        } else if (mappedPots.length > 0) {
           setSelectedPotId(mappedPots[0].id);
+        } else {
+          setSelectedPotId(null);
         }
       } catch (err) {
-        console.error("[HomeScreen] 택시팟 목록 조회 실패:", err);
+        console.error(
+          "[HomeScreen] 택시팟 목록 / 현재 접속 유저 조회 실패:",
+          err
+        );
       }
     }
 
     fetchData();
-  }, []);
+  }, [USER_ID]);
 
+  /* ======================
+   *  3) UI 핸들러들
+   * ====================== */
   const toggleViewMode = () => {
     setViewMode((prev) => (prev === "compact" ? "expanded" : "compact"));
   };
@@ -162,7 +260,6 @@ export default function HomeScreen() {
   const handleCreateTaxiPot = () => {
     navigate("/add-taxi", {
       state: {
-        // 지금 watchPosition 으로 추적하고 있는 내 위치
         hostLocation: userLocation,
       },
     });
@@ -170,8 +267,8 @@ export default function HomeScreen() {
 
   const handleClickCard = (pot) => {
     setSelectedPotId(pot.id);
-    const isOwner =
-      typeof pot.isOwner === "boolean" ? pot.isOwner : false;
+
+    const isOwner = typeof pot.isOwner === "boolean" ? pot.isOwner : false;
 
     navigate("/taxi-detail", {
       state: {
@@ -182,7 +279,6 @@ export default function HomeScreen() {
     });
   };
 
-  // 내가 올린 택시팟이 하나라도 있는지 (내 위치 픽커 색상 결정용)
   const isHostMe = taxiPots.some((pot) => pot.isOwner === true);
 
   const handleSelectTaxiPotFromMap = (partyId) => {
@@ -199,6 +295,9 @@ export default function HomeScreen() {
     }
   };
 
+  /* ======================
+   *  render
+   * ====================== */
   return (
     <div className="w-[393px] h-screen bg-white font-pretendard flex flex-col relative mx-auto overflow-hidden">
       {/* ===== 상단 헤더 ===== */}
@@ -258,7 +357,6 @@ export default function HomeScreen() {
           </button>
         </div>
 
-        {/* 카드 리스트 */}
         <div
           className={
             viewMode === "compact"
@@ -285,7 +383,7 @@ export default function HomeScreen() {
         </div>
       </section>
 
-      {/* ===== 플로팅 택시팟 생성 버튼 ===== */}
+      {/* ===== 플로팅 버튼 ===== */}
       <button
         type="button"
         onClick={handleCreateTaxiPot}

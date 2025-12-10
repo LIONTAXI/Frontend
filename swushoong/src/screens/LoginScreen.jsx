@@ -11,6 +11,7 @@ import EyeIcon from "../assets/icon/icon_eye.svg";
 
 // 로그인 API
 import { login } from "../api/auth";
+import { setAuthToken } from "../api/token";
 
 export default function LoginScreen() {
   const [showPw, setShowPw] = useState(false);
@@ -47,6 +48,30 @@ export default function LoginScreen() {
 
     const data = await login(email, password);
 
+/*
+      const token = data.token || data.accessToken; 
+      
+      if (token) {
+          setAuthToken(token); // 로컬 스토리지에 토큰 저장
+          console.log("로그인 성공 및 토큰 저장 완료.");
+      } else {
+          // 토큰이 없으면 오류 처리
+          throw new Error("서버 응답에 인증 토큰이 포함되어 있지 않습니다.");
+      }
+      
+
+      navigate("/home");
+    } catch (err) {
+      console.error("로그인 실패:", err);
+      setLoginError(true);
+      alert(
+        err.response?.message ||
+          "아이디 또는 비밀번호를 다시 확인해주세요."
+      );
+
+*/
+
+
     // 토큰 꺼내서 payload 디코딩
     const token = data.token;
     const payload = JSON.parse(atob(token.split(".")[1]));
@@ -70,6 +95,7 @@ export default function LoginScreen() {
       err.response?.message ||
         "아이디 또는 비밀번호를 다시 확인해주세요."
     );
+  
   }
 };
 

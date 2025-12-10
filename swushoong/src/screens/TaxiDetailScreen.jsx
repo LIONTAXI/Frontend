@@ -15,13 +15,16 @@ import {
   joinTaxiPot,
   deleteTaxiPot,
   getJoinRequests,
+  getCurrentUsers, // /api/map 호출
 } from "../api/taxi";
+import { getTaxiPartyInfo } from "../api/chat";
 
 export default function TaxiDetailScreen() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isOwner = false, taxiPotId } = location.state || {};
+  // 홈에서 넘어온 값들
+  const { isOwner = false, taxiPotId, taxiPot } = location.state || {};
 
   // 로그인 시 저장해 둔 userId 사용
   const rawUserId = localStorage.getItem("userId");
@@ -29,6 +32,9 @@ export default function TaxiDetailScreen() {
   console.log("[TaxiDetailScreen] USER_ID:", USER_ID);
 
   const [userLocation, setUserLocation] = useState(null);
+
+  // 총대(호스트) userId
+  const [hostUserId, setHostUserId] = useState(null);
 
   // 내 현재 위치 (픽커용)
   useEffect(() => {
@@ -62,66 +68,123 @@ export default function TaxiDetailScreen() {
   // 참여 요청 개수
   const [joinRequestCount, setJoinRequestCount] = useState(0);
 
+  // 초기값을 홈에서 넘어온 taxiPot 으로 채움 (좌표, 이모지 포함)
   const [detail, setDetail] = useState({
-    id: taxiPotId ?? null,
-    destination: "",
-    exitInfo: "",
-    deadline: "",
-    currentCount: 0,
-    maxCount: 0,
-    price: "",
-    emoji: "",
-    description: "",
-    latitude: null,
-    longitude: null,
+    id: taxiPot?.id ?? taxiPotId ?? null,
+    destination: taxiPot?.destination ?? "",
+    exitInfo: taxiPot?.exitInfo ?? "",
+    deadline: taxiPot?.deadline ?? "",
+    currentCount: taxiPot?.currentCount ?? 0,
+    maxCount: taxiPot?.maxCount ?? 0,
+    price: taxiPot?.price ?? "",
+    emoji: taxiPot?.emoji ?? "",
+    description: taxiPot?.description ?? "",
+    latitude:
+      taxiPot?.latitude != null ? Number(taxiPot.latitude) : null,
+    longitude:
+      taxiPot?.longitude != null ? Number(taxiPot.longitude) : null,
+    chatRoomId: taxiPot?.chatRoomId ?? null,
   });
 
-  // 택시팟 정보 조회
+  /* ======================================
+   *  택시팟 상세 + 호스트 위치/이모지 가져오기
+   * ====================================== */
   useEffect(() => {
-  if (!taxiPotId || USER_ID == null) return;
+    if (!taxiPotId) return;
 
-  getTaxiPotDetail(taxiPotId, USER_ID)
-    .then((data) => {
-      console.log("[TaxiDetailScreen] detail data:", data);
+    async function fetchDetail() {
+      try {
+        // 1) 택시팟 상세 + 2) 현재 지도에 표시 가능한 유저들
+        const [data, mapUsers] = await Promise.all([
+          getTaxiPotDetail(taxiPotId),
+          getCurrentUsers(),
+        ]);
 
-      // hostId를 숫자로 변환해서 비교
-      const hostId = data.hostId != null ? Number(data.hostId) : null;
-      const isMine =
-        hostId != null && USER_ID != null && hostId === USER_ID;
+        console.log("[TaxiDetailScreen] detail data:", data);
+        console.log("[TaxiDetailScreen] map users:", mapUsers);
 
-      console.log("[TaxiDetailScreen] hostId:", hostId, "USER_ID:", USER_ID, "isMine:", isMine);
-      setIsMyPost(isMine);
+        // hostId 파싱
+        const hostId =
+          data.hostId != null
+            ? Number(data.hostId)
+            : data.hostUserId != null
+            ? Number(data.hostUserId)
+            : null;
 
-      // 동승 상태 → 버튼 상태
-      if (data.participationStatus === "WAITING") {
-        setRequestState("requested");
-      } else if (data.participationStatus === "ACCEPTED") {
-        setRequestState("accepted");
-      } else {
-        setRequestState("idle");
+        // 🔹 host userId를 state에 저장 → 프로필 보기 버튼에서 사용
+        setHostUserId(hostId);
+
+        // 이 글이 내 글인지 여부
+        const isMine =
+          hostId != null && USER_ID != null && hostId === USER_ID;
+        setIsMyPost(isMine);
+
+        // 동승 상태 → 버튼 상태
+        if (data.participationStatus === "WAITING") {
+          setRequestState("requested");
+        } else if (data.participationStatus === "ACCEPTED") {
+          setRequestState("accepted");
+        } else {
+          setRequestState("idle");
+        }
+
+        // 기본 좌표/이모지: 홈에서 넘어온 값 (있다면)
+        let lat =
+          taxiPot?.latitude != null ? Number(taxiPot.latitude) : null;
+        let lng =
+          taxiPot?.longitude != null ? Number(taxiPot.longitude) : null;
+        let emoji = data.markerEmoji ?? taxiPot?.emoji ?? "";
+
+        // /api/map 에서 hostId와 일치하는 유저 찾기
+        if (hostId != null && Array.isArray(mapUsers)) {
+          const hostUser = mapUsers.find((u) => {
+            const uid = u.userId ?? u.id ?? u.user?.id;
+            return uid === hostId;
+          });
+
+          if (hostUser) {
+            lat = hostUser.latitude ?? hostUser.lat ?? lat;
+            lng = hostUser.longitude ?? hostUser.lng ?? lng;
+            emoji =
+              data.markerEmoji ??
+              hostUser.markerEmoji ??
+              emoji;
+          }
+        }
+
+        const chatRoomId =
+          data.chatRoomId != null
+            ? Number(data.chatRoomId)
+            : data.chatRoom?.id != null
+            ? Number(data.chatRoom.id)
+            : null;
+
+        setDetail({
+          id: data.id ?? taxiPotId,
+          destination: data.destination ?? taxiPot?.destination ?? "",
+          exitInfo: data.departure ?? taxiPot?.exitInfo ?? "",
+          deadline: data.meetingTime ?? taxiPot?.deadline ?? "",
+          currentCount:
+            data.currentParticipants ?? taxiPot?.currentCount ?? 0,
+          maxCount:
+            data.maxParticipants ?? taxiPot?.maxCount ?? 0,
+          price:
+            data.expectedPrice != null
+              ? `${Number(data.expectedPrice).toLocaleString()}원`
+              : taxiPot?.price ?? "",
+          emoji,
+          description: data.content ?? taxiPot?.description ?? "",
+          latitude: lat,
+          longitude: lng,
+          chatRoomId,
+        });
+      } catch (err) {
+        console.error("[TaxiDetailScreen] 택시팟 정보 조회 실패:", err);
       }
+    }
 
-      setDetail({
-        id: data.id ?? taxiPotId,
-        destination: data.destination ?? "",
-        exitInfo: data.departure ?? "",
-        deadline: data.meetingTime ?? "",
-        currentCount: data.currentParticipants ?? 0,
-        maxCount: data.maxParticipants ?? 0,
-        price:
-          data.expectedPrice != null
-            ? `${Number(data.expectedPrice).toLocaleString()}원`
-            : "",
-        emoji: data.emoji || "🍊",
-        description: data.content ?? "",
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
-      });
-    })
-    .catch((err) => {
-      console.error("[TaxiDetailScreen] 택시팟 정보 조회 실패:", err);
-    });
-}, [taxiPotId, USER_ID]);
+    fetchDetail();
+  }, [taxiPotId, USER_ID, taxiPot]);
 
   // 총대 화면일 때만 참여 요청 개수 조회
   useEffect(() => {
@@ -130,7 +193,7 @@ export default function TaxiDetailScreen() {
     const id = detail.id ?? taxiPotId;
     if (!id) return;
 
-    getJoinRequests(id, USER_ID)
+    getJoinRequests(id)
       .then((list) => {
         const count = Array.isArray(list) ? list.length : 0;
         setJoinRequestCount(count);
@@ -139,7 +202,7 @@ export default function TaxiDetailScreen() {
         console.error("[TaxiDetailScreen] 참여 요청 목록 조회 실패:", err);
         setJoinRequestCount(0);
       });
-  }, [isMyPost, detail.id, taxiPotId, USER_ID]);
+  }, [isMyPost, detail.id, taxiPotId]);
 
   const primaryLabel =
     requestState === "idle"
@@ -166,7 +229,35 @@ export default function TaxiDetailScreen() {
     } else if (requestState === "requested") {
       setRequestState("accepted");
     } else if (requestState === "accepted") {
-      console.log("채팅 화면으로 이동 (추후 연동)");
+      const partyId = detail.id ?? taxiPotId;
+      if (!partyId) return;
+
+      try {
+        // 채팅방 정보 조회해서 chatRoomId 확보
+        const info = await getTaxiPartyInfo(partyId, USER_ID);
+
+        const chatRoomId =
+          info.chatRoomId != null
+            ? Number(info.chatRoomId)
+            : info.chatRoom?.id != null
+            ? Number(info.chatRoom.id)
+            : null;
+
+        if (!chatRoomId) {
+          console.warn(
+            "[TaxiDetailScreen] getTaxiPartyInfo 응답에 chatRoomId가 없습니다.",
+            info
+          );
+          return;
+        }
+
+        navigate(`/chat/${chatRoomId}/${partyId}`);
+      } catch (err) {
+        console.error(
+          "[TaxiDetailScreen] 채팅방 정보 조회 실패:",
+          err
+        );
+      }
     }
   };
 
@@ -181,6 +272,10 @@ export default function TaxiDetailScreen() {
       console.error("[TaxiDetailScreen] 택시팟 삭제 실패:", err);
     }
   };
+
+  // 좌표 유무 체크 (0도 허용하도록 null 기반으로)
+  const hasCoords =
+    detail.latitude != null && detail.longitude != null;
 
   return (
     <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
@@ -197,7 +292,7 @@ export default function TaxiDetailScreen() {
           <KakaoMap
             userLocation={userLocation}
             taxiHosts={
-              detail.latitude && detail.longitude
+              hasCoords
                 ? [
                     {
                       id: detail.id,
@@ -215,7 +310,7 @@ export default function TaxiDetailScreen() {
         </div>
 
         <section className="px-4 pt-4 flex flex-col gap-3">
-          <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 flex-1">
               <img src={IconPin2} alt="목적지" className="w-6 h-6" />
               <h2 className="text-head-bold-20 text-black-90">
@@ -260,10 +355,20 @@ export default function TaxiDetailScreen() {
                 </span>
               </div>
 
+              {/* 🔹 총대슈니 프로필 보러가기 → ReviewScreen (/member-profile/:userId) */}
               <button
                 type="button"
                 className="flex items-center gap-1"
-                onClick={() => console.log("총대슈니 프로필로 이동")}
+                onClick={() => {
+                  if (!hostUserId) return;
+                  navigate(`/member-profile/${hostUserId}`, {
+                    state: {
+                      userId: hostUserId,
+                      from: "taxi-detail",
+                      taxiPotId: detail.id ?? taxiPotId,
+                    },
+                  });
+                }}
               >
                 <span className="text-body-semibold-14 text-black-50">
                   총대슈니 프로필 보러가기
@@ -360,3 +465,5 @@ export default function TaxiDetailScreen() {
     </div>
   );
 }
+
+          

@@ -11,7 +11,7 @@ function buildHeaders(options = {}) {
   };
 }
 
-async function apiRequest(path, options = {}) {
+export async function apiRequest(path, options = {}) {
   const url = `${BASE_URL}${path}`;
   console.log("[apiRequest] 요청:", url, options);
 
