@@ -1,8 +1,8 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import BtnLong from "../components/BtnLong";
+import Admin from "../api/Admin";
 
 export default function AdminLoginScreen() {
   const [showPw, setShowPw] = useState(false);
@@ -28,12 +28,29 @@ export default function AdminLoginScreen() {
     );
   };
 
+  // API 연결 
   const handleLogin = () => {
     if (!canLogin) return;
-    console.log("로그인 시도", { userId, password });
-    setLoginError(true);
-  };
 
+            const requiredId = import.meta.env.VITE_ADMIN_USER;
+            const requiredPassword = import.meta.env.VITE_ADMIN_PASS;
+        
+            // 입력 ID: 'admin' (userId) + '@swu.ac.kr'
+            const fullUserId = `${userId}@swu.ac.kr`;
+
+            // 인증 성공 여부 판단
+        if (fullUserId === requiredId && password === requiredPassword) {
+            // 인증 성공: API 파일의 commonHeaders에 고정된 인증 정보가 이미 설정되었으므로
+            // 로그인 상태를 유지하고 대시보드로 이동만 하면 됩니다.
+            console.log("로그인 성공 (환경 변수 일치)");
+            setLoginError(false);
+            navigate('/admin-home'); // 성공 시 대시보드로 이동
+        } else {
+            // 인증 실패
+            console.log("로그인 실패 (환경 변수 불일치)");
+            setLoginError(true);
+        }
+  };
 
   return (
     <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto overflow-hidden pt-12 pb-4">

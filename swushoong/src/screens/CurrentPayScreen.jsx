@@ -1,68 +1,198 @@
-import React,{useState} from "react";
-import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
-import IconNotify from "../assets/img/chat_notify.svg"
+// 정산 현황 페이지 (방장-총대슈니용)
 
-// == 더미 데이터 ==
-const DUMMY_FARE = 5000;
-const DUMMY_MEMBERS = [
-    { name: "임슈니 · 23 (나)", amount: 1250, isMe: true },
-    { name: "박슈니 · 23", amount: 1250, status: 'DONE', isMe: false },
-    { name: "이슈니 · 23", amount: 1250, status: 'PENDING', isMe: false },
-    { name: "김슈니 · 21", amount: 1250, status: 'PENDING', isMe: false },
-];
-const DUMMY_ACCOUNT = "슈니은행 393-401-4953";
+import React,{useState, useEffect, useCallback} from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import Header from "../components/Header";
+import IconNotify from "../assets/img/chat_notify.svg";
+import { getSettlementDetails, markParticipantPaid, remindSettlement } from "../api/settlements";
+// 현재 로그인 유저 ID를 가져오는 함수
+import { getCurrentUserId } from "../api/token";
 
 // 금액을 천 단위 콤마와 '원' 단위로 포맷팅하는 함수
 const formatCurrency = (amount) => {
+    if (typeof amount !== 'number' || isNaN(amount) || amount === null) return '0';
     return `${amount.toLocaleString()}`;
 };
 
-// 40분을 밀리초로 설정 (2,400,000 ms)
-const COOL_DOWN_MS = 2400000; 
-// 테스트를 위해 짧게 설정 (예: 5초)
-const TEST_COOL_DOWN_MS = 5000;
+// 2시간을 밀리초로 설정 (2시간 * 60분 * 60초 * 1000ms)
+const COOL_DOWN_MS = 2 * 60 * 60 * 1000; 
+const REMIND_COOL_DOWN = COOL_DOWN_MS;
 
 export default function CurrentPayScreen() {
 
     const navigate = useNavigate();
+    const location = useLocation();
 
+    const chatRoomId = location.state?.chatRoomId;
+    const partyId = location.state?.taxiPartyId || location.state?.partyId;
+
+    const [settlementData, setSettlementData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [showTooltip, setShowTooltip] = useState(false);
-
-    const [isDisabled, setIsDisabled] = useState(false);
+    const [isDisabled, setIsDisabled] = useState(false); // 재촉 버튼 쿨타임 상태
     
-    // 합계 금액 계산
-    const totalPayment = DUMMY_MEMBERS.reduce((sum, member) => sum + member.amount, 0);
-
-    // 차액 계산
-    const difference = DUMMY_FARE - totalPayment; 
+    // 실제 ID를 가져옵니다.
+    const currentUserId = getCurrentUserId();
+    console.log("현재 로그인 사용자 ID:", currentUserId); // 🚨 ID 확인용 
     
-    const handleRemindClick = () => {
-        // 이미 쿨타임 중이면 아무것도 하지 않음
-        if (isDisabled) return;
+    const stateSettlementId = location.state?.settlementId || '';
+    const settlementId = stateSettlementId || localStorage.getItem("currentSettlementId");
 
-        // 서버 전송 시뮬레이션 ... 
-        console.log("미정산 요청 메일 전송 시도...");
+    // API 연결: 정산 상세 정보 불러오기
+    const loadSettlementDetails = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
         
-        // (성공 메시지)
-        setShowTooltip(true);
-        setTimeout(() => {
-            setShowTooltip(false);
-        }, 3000); // 3초만 보여줌
-        
-        // 쿨타임 시작 (버튼 비활성화)
-        setIsDisabled(true); 
+        const idToFetch = parseInt(settlementId, 10);
 
-        // 쿨타임 타이머 설정
-        setTimeout(() => {
-            setIsDisabled(false); // 쿨타임 종료 후 버튼 활성화
-            console.log("쿨타임 종료. 다시 조르기 가능.");
-        }, TEST_COOL_DOWN_MS); // 테스트 시 5초, 실제 40분 시 COOL_DOWN_MS 사용
+        if (isNaN(idToFetch) || idToFetch <= 0) {
+            // settlementId가 null, undefined, 빈 문자열이거나 유효하지 않은 숫자일 경우 에러 처리
+            setError("❌ 정산 ID를 찾을 수 없습니다. (ID가 유효하지 않거나 0 이하)");
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            // API 호출: 정산 상세 조회 (GET /api/settlements/{settlementId})
+            // 🚨 수정: 변환된 정수형 ID (idToFetch)를 사용
+            const data = await getSettlementDetails(idToFetch); 
+            setSettlementData(data);
+        } catch (err) {
+            const errorMessage = err.response?.message || "정산 현황을 불러오는 데 실패했습니다.";
+            console.error("❌ 정산 상세 조회 실패:", errorMessage, err);
+            setError(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [settlementId]);
+
+    // 쿨타임 로직
+    useEffect(() => {
+        loadSettlementDetails();
+        
+        const lastRemindTime = localStorage.getItem(`lastRemindTime_${settlementId}`);
+        if (lastRemindTime) {
+            const elapsedTime = Date.now() - parseInt(lastRemindTime, 10);
+            if (elapsedTime < REMIND_COOL_DOWN) {
+                setIsDisabled(true);
+                // 남은 쿨타임 시간 후 버튼 활성화
+                const remainingTime = REMIND_COOL_DOWN - elapsedTime;
+                setTimeout(() => {
+                    setIsDisabled(false);
+                    console.log("⏰ 쿨타임 종료. 다시 조르기 가능.");
+                }, remainingTime);
+            }
+        }
+    }, [loadSettlementDetails, settlementId]);
+
+
+    // API 연결: 정산 재촉 API 호출
+    const handleRemindClick = async () => {
+        if (isDisabled || !settlementData) return;
+        
+        setIsDisabled(true); // 쿨타임 시작 (버튼 비활성화)
+        
+        try {
+            // API 호출: 정산 재촉 (POST /api/settlements/{settlementId}/remind)
+            await remindSettlement(settlementData.settlementId);
+            console.log("✅ 정산 재촉 성공");
+            
+            // 쿨타임 기록 및 툴팁 표시
+            localStorage.setItem(`lastRemindTime_${settlementData.settlementId}`, Date.now().toString());
+            setShowTooltip(true);
+            
+            setTimeout(() => setShowTooltip(false), 3000); // 3초 후 툴팁 숨김
+            
+            // 쿨타임 타이머 설정
+            setTimeout(() => {
+                setIsDisabled(false); // 쿨타임 종료 후 버튼 활성화
+            }, REMIND_COOL_DOWN);
+            
+        } catch (err) {
+            const errorMessage = err.response?.message || "정산 조르기에 실패했습니다.";
+            console.error("❌ 정산 조르기 실패:", errorMessage, err);
+            alert(`정산 조르기에 실패했습니다: ${errorMessage}`);
+            setIsDisabled(false); // 실패 시 버튼 재활성화
+        }
+    };
+    
+    // API 연결: 정산 완료 처리 핸들러 (총대만 가능)
+    const handleMarkPaid = async (targetUserId) => {
+        if (!settlementData) return;
+        
+        if (window.confirm(`${targetUserId}번 유저의 정산을 완료 처리하시겠습니까?`)) {
+            try {
+                // API 호출: 참여자 정산 완료 처리 (POST /api/settlements/{settlementId}/participants/{userId}/pay)
+                await markParticipantPaid(settlementData.settlementId, targetUserId);
+                console.log(`✅ ${targetUserId}번 유저 정산 완료 처리 성공`);
+                
+                // 성공 후 정산 목록 갱신
+                loadSettlementDetails(); 
+            } catch (err) {
+                const errorMessage = err.response?.message || "정산 완료 처리에 실패했습니다.";
+                console.error("❌ 정산 완료 처리 실패:", errorMessage, err);
+                alert(`정산 완료 처리에 실패했습니다: ${errorMessage}`);
+            }
+        }
+    };
+
+    if (isLoading) return <div className="text-center p-8 text-black-90">정산 현황을 불러오는 중...</div>;
+    if (error || !settlementData) return <div className="text-center p-8 text-red-500">{error || "정산 정보가 없습니다."}</div>;
+
+    // API 데이터 구조 분해 및 가공
+    const { totalFare, bankName, accountNumber, participants } = settlementData;
+    const displayFare = totalFare;
+    const displayAccount = `${bankName} ${accountNumber}`;
+
+    const hostMember = participants.find(p => p.host);
+    const isHost = hostMember && hostMember.userId === currentUserId;
+
+    const sortedParticipants = [...participants].sort((a, b) => {
+        // a.host가 true이고 b.host가 false이면 a를 앞으로 (a < b, -1 반환)
+        if (a.host && !b.host) return -1;
+        // a.host가 false이고 b.host가 true이면 b를 앞으로 (a > b, 1 반환)
+        if (!a.host && b.host) return 1;
+        // 나머지 경우는 순서 변경 없음 (0 반환)
+        return 0;
+    });
+
+    const displayMembers = sortedParticipants.map(p => {
+        const isMe = p.userId === currentUserId;
+        return {
+            ...p,
+            name: `${p.name} · ${p.shortStudentId} ${isMe ? '(나)' : ''}`, 
+            isMe: isMe,
+            status: p.paid ? 'DONE' : 'PENDING',
+        }
+    });
+    
+    // 미정산 인원 확인 (조르기 버튼 활성화 조건)
+    const pendingMembers = displayMembers.filter(m => m.status === 'PENDING' && !m.isMe);
+    const hasPendingMembers = pendingMembers.length > 0;
+
+    const handleGoBackToChat = () => {
+        if (chatRoomId && partyId) {
+            const isAllSettled = !hasPendingMembers;
+
+            // 채팅 페이지 경로: /chat/:chatRoomId/:partyId
+            navigate(`/chat/${chatRoomId}/${partyId}`, { 
+                replace: true,
+                state: { 
+                    // ChatScreen으로 isSettled 상태를 전달
+                    isSettled: isAllSettled
+                }
+            });
+        } else {
+            // 필수 정보가 없으면 이전 화면으로 돌아가거나 홈으로 이동
+            console.warn("채팅방 ID 또는 파티 ID가 없어 이전 채팅방으로 이동할 수 없습니다. 직전 페이지로 돌아갑니다.");
+            navigate('/'); 
+        }
     };
 
     return (
         <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidde"> 
-            <Header title="정산 현황" />
+            <Header title="정산 현황" onBack={handleGoBackToChat} />
 
             {/* 지불한 택시비 및 계좌 정보 */}
             <div className="w-full space-y-4 px-4 pb-8">
@@ -79,7 +209,7 @@ export default function CurrentPayScreen() {
             
                             {/* 금액 부분  */}
                             <span className="text-body-regular-16 text-black-90">
-                                {formatCurrency(DUMMY_FARE)} 
+                                {formatCurrency(displayFare)} 
                             </span>
             
                             {/* '원' 부분  */}
@@ -98,7 +228,7 @@ export default function CurrentPayScreen() {
                     </p>
                     <div className="flex items-center self-stretch rounded p-4 bg-black-10">
                         <span className="text-body-regular-16 text-black-90">
-                            {DUMMY_ACCOUNT}
+                            {displayAccount}
                         </span>
                     </div>
                 </div>
@@ -111,8 +241,8 @@ export default function CurrentPayScreen() {
 
                 {/* 멤버 리스트 */}
                 <div className="space-y-4">
-                    {DUMMY_MEMBERS.map((member, index) => (
-                        <div key={index} className="flex justify-between items-center">
+                    {displayMembers.map((member) => (
+                        <div key={member.userId} className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 <div className={`w-10 h-10 rounded-full ${
                                     member.isMe ? 'border border-[#FC7E2A] bg-[#D6D6D6]' : 'bg-[#D6D6D6]'
@@ -128,23 +258,28 @@ export default function CurrentPayScreen() {
                                     {formatCurrency(member.amount)}원
                                 </span>
 
-                                {/* 정산 상태 버튼 */}
+                                {/* 정산 상태 버튼 (총대가 아니거나 이미 완료된 경우 버튼 비활성화 */}
                                 {member.isMe ? (
-                                    <div className="w-[88px] h-8"></div>
+                                    <div className="w-[88px] h-8"></div> // 총대 본인은 버튼 없음
                                 ) : (
-                                    <div className={`
-                                        py-1.5 px-3 rounded 
-                                        w-[88px] h-8 flex items-center justify-center 
-                                    `}
+                                    <button 
+                                        // 총대이면서 미정산 상태일 때만 클릭 가능
+                                        onClick={() => isHost && member.status === 'PENDING' && handleMarkPaid(member.userId)}
+                                        className={`
+                                            py-1.5 px-3 rounded 
+                                            w-[88px] h-8 flex items-center justify-center 
+                                        `}
                                         style={{ 
-                                            backgroundColor: member.status === 'DONE' ? '#FC7E2A' : '#D6D6D6'
+                                            backgroundColor: member.status === 'DONE' ? '#D6D6D6' : '#FC7E2A'
                                         }}
+                                        // 총대가 아니거나, 이미 완료된 경우 버튼 비활성화
+                                        disabled={!isHost || member.status === 'DONE'} 
                                     >
                                         <span className="text-body-semibold-14"
-                                                style={{ color: member.status === 'DONE' ? '#FFF' : '#444' }}>
-                                            {member.status === 'DONE' ? '정산 완료' : '미정산'}
+                                            style={{ color: member.status === 'DONE' ? '#444' : '#FFF' }}>
+                                            {member.status === 'DONE' ? '정산 완료' : '정산 완료'}
                                         </span>
-                                    </div>
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -159,22 +294,26 @@ export default function CurrentPayScreen() {
                     <div className="absolute right-4 bottom-14">
                         <img 
                             src={IconNotify} 
-                            alt="40분 뒤에 다시 보낼 수 있어요" 
+                            alt={`${REMIND_COOL_DOWN / 60000}분 뒤에 다시 보낼 수 있어요`}
                             className="max-w-[180px] h-auto rounded-lg" 
                         /> 
                     </div>
                 )}
-                <button
-                    onClick={handleRemindClick}
-                    className={`w-full h-14 p-3 rounded justify-center items-center text-body-semibold-16 
-                                ${isDisabled 
-                                    ? 'bg-black-40 text-black-70' 
-                                    : 'bg-orange-main text-white active:bg-[#AA561D]'
-                                }
-                                transition-colors duration-100`}
-                >
-                    미정산 동승슈니 조르기
-                </button>
+                {isHost && ( // 총대에게만 조르기 버튼 노출
+                    <button
+                        onClick={handleRemindClick}
+                        className={`w-full h-14 p-3 rounded justify-center items-center text-body-semibold-16 
+                                    ${!hasPendingMembers || isDisabled 
+                                        ? 'bg-black-40 text-black-70' 
+                                        : 'bg-orange-main text-white active:bg-[#AA561D]'
+                                    }
+                                    transition-colors duration-100`}
+                        // 미정산자가 없거나 쿨타임 중이면 비활성화
+                        disabled={!hasPendingMembers || isDisabled}
+                    >
+                        미정산 동승슈니 조르기
+                    </button>
+                )}
             </div>
         </div>
     );
