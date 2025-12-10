@@ -1,28 +1,32 @@
 // src/components/ReviewScreen.js
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { postReview, fetchReviewableMembers } from '../api/review';
-import { convertLabelsToEnums } from '../api/reviewTag'; 
+import { getCurrentUserId } from '../api/token';
 
-import IconLeft from '../assets/icon/icon_left.svg';
+import { convertLabelsToEnums } from '../api/reviewTag'; 
+import Header from "../components/Header";
 import IconDown from '../assets/icon/icon_down.svg';
 import BtnNegetive from "../components/btn_negetive";
 import BtnPositive from "../components/btn_positive";
 
 
-// ⚠️ 이 컴포넌트가 사용될 때 props로 taxiPartyId와 revieweeId를 받아야 합니다.
+// props로 taxiPartyId와 revieweeId를 받아야 함
 export default function ReviewAllScreen() { 
-    const [searchParams] = useSearchParams();
+    //const [searchParams] = useSearchParams();
 
-    const taxiPartyId = Number(searchParams.get('taxiPartyId'));
-    const initialRevieweeId = Number(searchParams.get('revieweeId'));
+    const { taxiPartyId: rawTaxiPartyId, revieweeId: rawRevieweeId } = useParams();
+    const navigate = useNavigate();
+
+    const taxiPartyId = Number(rawTaxiPartyId);
+    const initialRevieweeId = Number(rawRevieweeId);
 
     const [isLoading, setIsLoading] = useState(true);
     const [targetUser, setTargetUser] = useState(null); // 현재 후기 작성 대상자 (총대/동승자)
     const [error, setError] = useState(null);
 
-    // 후기 선택 상태 (기존 코드 유지)
+    // 후기 선택 상태
     const [selectedPositive, setSelectedPositive] = useState([]);
     const [selectedNegative, setSelectedNegative] = useState([]);
     const [showNegative, setShowNegative] = useState(false);
@@ -38,10 +42,10 @@ export default function ReviewAllScreen() {
             }
 
             try {
-                // 택시팟 멤버 목록을 API로 가져옵니다.
+                // 택시팟 멤버 목록
                 const members = await fetchReviewableMembers(taxiPartyId);
                 
-                // 후기 대상자 (reviewee)를 찾습니다.
+                // 후기 대상자 (reviewee)
                 const initialTarget = members.find(m => m.userId === initialRevieweeId);
 
                 if (initialTarget) {
@@ -61,10 +65,9 @@ export default function ReviewAllScreen() {
         loadMembers();
     }, [taxiPartyId, initialRevieweeId]);
     
-    // 대상자 역할에 따라 UI 항목 동적 설정
     const isHost = targetUser ? (targetUser.role === "총대슈니") : false;
     
-    // UI 표시용 후기 항목 (UI 변경 없이, 역할에 따라 항목만 설정)
+    // UI 표시용 후기 항목 
     const positiveReviews = isHost ? 
         ["약속을 잘 지켜요", "응답이 빨라요", "매너가 좋아요", "정보 공지가 빨라요", "정산 정보가 정확해요"] :
         ["약속을 잘 지켜요", "응답이 빨라요", "매너가 좋아요", "정산이 빨라요", "친절해요"];
@@ -74,7 +77,7 @@ export default function ReviewAllScreen() {
         ["약속시간을 지키지 않았어요", "소통이 어려웠어요", "매너가 좋지 않았어요", "정산이 느렸어요"];
 
 
-    // 항목 선택 핸들러 (기존 코드 유지)
+    // 항목 선택 핸들러
     const handleSelectReview = (review, selectionState, setSelectionState) => {
         if (selectionState.includes(review)) {
             setSelectionState(selectionState.filter(item => item !== review));
@@ -83,7 +86,7 @@ export default function ReviewAllScreen() {
         }
     };
 
-    // 다시 만나고 싶은 여부 핸들러 (기존 코드 유지)
+    // 다시 만나고 싶은 여부 핸들러
     const handleMeetAgain = (value) => {
         setWouldMeetAgain(value);
     };
@@ -127,7 +130,7 @@ export default function ReviewAllScreen() {
     // -----------------------------------------------------------------
 
 
-    // 긍정 후기 버튼 렌더링 함수 (기존 코드 유지)
+    // 긍정 후기 버튼 렌더링 함수 
     const renderPositiveButtons = () => (
         <div className="flex flex-wrap gap-2 mb-8">
             {positiveReviews.map((review) => {
@@ -141,8 +144,8 @@ export default function ReviewAllScreen() {
                         border
                         
                         ${isSelected 
-                            ? 'bg-white text-[#FC7E2A] body-semibold-14 border-[#FC7E2A]' 
-                            : 'bg-black-10 text-black-70 body-semibold-14 border-transparent' 
+                            ? 'bg-white text-[#FC7E2A] text-body-semibold-14 border-[#FC7E2A]' 
+                            : 'bg-black-10 text-black-70 text-body-semibold-14 border-transparent' 
                         }
                     `}
                     >
@@ -153,7 +156,7 @@ export default function ReviewAllScreen() {
         </div>
     );
 
-    // 부정 후기 버튼 렌더링 함수 (기존 코드 유지)
+    // 부정 후기 버튼 렌더링 함수 
     const renderNegativeButtons = () => (
         <div className="flex flex-wrap gap-2 mt-4">
             {negativeReviews.map((review) => {
@@ -167,8 +170,8 @@ export default function ReviewAllScreen() {
                         border
                         
                         ${isSelected 
-                            ? 'bg-white text-[#FC7E2A] body-semibold-14 border-[#FC7E2A]' 
-                            : 'bg-black-10 text-black-70 body-semibold-14 border-transparent' 
+                            ? 'bg-white text-[#FC7E2A] text-body-semibold-14 border-[#FC7E2A]' 
+                            : 'bg-black-10 text-black-70 text-body-semibold-14 border-transparent' 
                         }
                     `}
                     >
@@ -179,7 +182,7 @@ export default function ReviewAllScreen() {
         </div>
     );
     
-    // 다시 만나고 싶은 여부 버튼 렌더링 함수 (기존 코드 유지)
+    // 다시 만나고 싶은 여부 버튼 렌더링 함수 
     const renderMeetAgainButtons = () => (
         <div className="flex justify-between gap-2 mt-2 ">
         <button
@@ -229,35 +232,25 @@ export default function ReviewAllScreen() {
         <div className="px-4 bg-white min-h-screen"> 
             
             {/* 1. 상단 헤더 */}
-            <div className="flex items-center justify-between mb-6 mt-6">
-                <div className="flex justify-start"> 
-                    <button>
-                        <img src={IconLeft} alt="뒤로가기"/>
-                    </button>
-                </div>
-                <p className="head-regular-20 text-center flex-grow text-black-90">
-                    후기 작성 
-                </p>
-                <div className="w-10"></div>
-            </div>
+            <Header title="후기작성" />
 
             {/* 2. 사용자 정보 (동적으로 로드된 targetUser 사용) */}
             <div className="flex items-center mb-8
-                            rounded border border-gray-300 bg-white
+                            rounded border border-black-20 bg-white
                             px-3 py-4"
             >
-                <div className="w-12 h-12 bg-gray-200 rounded-full mr-3">
+                <div className="w-12 h-12 bg-black-20 rounded-full mr-3">
                     {/* 프로필 이미지 영역 */}
                 </div>
                 <div>
                     {/* targetUser 정보 사용 */}
-                    <p className="body-semibold-16 text-black-70">{targetUser.name} · {targetUser.shortStudentId}</p>
-                    <p className="body-regular-14 text-black-70">{targetUser.role}</p>
+                    <p className="text-body-semibold-16 text-black-70">{targetUser.name} · {targetUser.shortStudentId}</p>
+                    <p className="text-body-regular-14 text-black-70">{targetUser.role}</p>
                 </div>
             </div>
 
             {/* 3. 후기 선택 (긍정) */}
-            <h2 className="head-semibold-20 text-[##000] mb-3">후기 선택</h2>
+            <h2 className="text-head-semibold-20 text-[##000] mb-3">후기 선택</h2>
             {renderPositiveButtons()}
 
             {/* 4. 아쉬운 점 (부정) */}
@@ -291,7 +284,7 @@ export default function ReviewAllScreen() {
                             w-full h-12 px-4 rounded-lg body-semibold-16 transition-all duration-300
                             ${isSubmitEnabled 
                                 ? 'bg-[#FC7E2A] text-white' 
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                : 'bg-black-20 text-black-70 cursor-not-allowed' 
                             }
                         `}
                     >

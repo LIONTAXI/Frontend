@@ -102,6 +102,21 @@ export function getChatHistory(chatRoomId) {
   });
 }
 
+// 4. 채팅방 사용자 목록 조회 API (NEW)
+// GET /api/reviews/members?taxiPartyId={taxiPartyId}
+// -----------------------------------------------------
+/**
+ * 채팅방 하단 메뉴의 “사용자 목록” 화면에서 사용할 멤버 목록을 조회합니다.
+ * @param {number} taxiPartyId - 택시 파티 ID
+ * @returns {Promise<Array<Object>>} - 멤버 배열
+ */
+export function getPartyMembersForReview(taxiPartyId) {
+    const uri = `/api/reviews/members?taxiPartyId=${taxiPartyId}`;
+    return apiRequestWithAuth(uri, {
+        method: 'GET',
+    });
+}
+
 
 // -----------------------------------------------------
 // 3. WebSocket (STOMP) 설정 및 메시지 전송

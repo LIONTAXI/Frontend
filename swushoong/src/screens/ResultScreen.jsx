@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
-import { getSettlementDetails } from "../api/settlements";
+import { getSettlementDetails, remindSettlement } from "../api/settlements";
 // 현재 로그인 유저 ID를 가져오는 함수 (host 판단에 사용)
 import { getCurrentUserId } from "../api/token";
 
@@ -74,9 +74,20 @@ export default function ResultScreen() {
     // UI에 맞게 데이터 가공
     const displayFare = totalFare;
     const displayAccount = `${bankName} ${accountNumber}`;
+
+    const sortedParticipants = [...participants].sort((a, b) => {
+        // a.host가 true이고 b.host가 false이면 a를 앞으로 (a < b, -1 반환)
+        if (a.host && !b.host) return -1;
+        // a.host가 false이고 b.host가 true이면 b를 앞으로 (a > b, 1 반환)
+        if (!a.host && b.host) return 1;
+        // 나머지 경우는 순서 변경 없음 (0 반환)
+        return 0;
+    });
+
     
-    const displayMembers = participants.map(p => {
+    const displayMembers = sortedParticipants.map(p => {
         const isMe = p.userId === currentUserId; // 현재 유저 ID와 비교
+        
         return {
             ...p,
             name: `${p.name} · ${p.shortStudentId} ${isMe ? '(나)' : ''}`, 
@@ -90,14 +101,28 @@ export default function ResultScreen() {
     const difference = displayFare - totalPayment; 
     
     // 정산 요청하기 버튼 클릭 핸들러 (채팅방 이동만 담당)
-    const handleRequestSettlement = () => {
+    const handleRequestSettlement = async () => {
         const taxiPartyId = settlementData.taxiPartyId;
+        const settlementId = settlementData.settlementId;
 
-        // 🚨 수정: taxiPartyId와 chatRoomId를 사용하여 정확한 채팅방 경로로 복귀
-        // 경로 형식: /chat/:chatRoomId/:partyId
+        try {
+            // 서버에서 createSettlement 후 바로 알림을 보내지 않는다면,
+            // 클라이언트가 이 알림 API를 호출해야 동승자에게 시스템 메시지가 전파됩니다.
+            await remindSettlement(settlementId); 
+            console.log("✅ 정산 요청(알림) API 호출 성공.");
+
+        } catch (error) {
+            console.error("❌ 정산 요청 알림 전송 실패:", error);
+            alert("정산 요청 알림 전송에 실패했습니다. 채팅방으로 이동합니다.");
+        }
+
         const returnPath = `/chat/${chatRoomId}/${taxiPartyId}`;
 
+        localStorage.removeItem("currentSettlementId");
+        localStorage.removeItem("currentChatRoomId");
+
         navigate(returnPath, { 
+            replace: true, // 뒤로가기 스택에서 정산 화면을 제거
             state: { 
                 settlementCompleted: true, 
                 settlementId: settlementData.settlementId 

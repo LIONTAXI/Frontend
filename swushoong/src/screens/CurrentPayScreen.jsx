@@ -23,6 +23,9 @@ export default function CurrentPayScreen() {
     const navigate = useNavigate();
     const location = useLocation();
 
+    const chatRoomId = location.state?.chatRoomId;
+    const partyId = location.state?.taxiPartyId || location.state?.partyId;
+
     const [settlementData, setSettlementData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -145,7 +148,16 @@ export default function CurrentPayScreen() {
     const hostMember = participants.find(p => p.host);
     const isHost = hostMember && hostMember.userId === currentUserId;
 
-    const displayMembers = participants.map(p => {
+    const sortedParticipants = [...participants].sort((a, b) => {
+        // a.host가 true이고 b.host가 false이면 a를 앞으로 (a < b, -1 반환)
+        if (a.host && !b.host) return -1;
+        // a.host가 false이고 b.host가 true이면 b를 앞으로 (a > b, 1 반환)
+        if (!a.host && b.host) return 1;
+        // 나머지 경우는 순서 변경 없음 (0 반환)
+        return 0;
+    });
+
+    const displayMembers = sortedParticipants.map(p => {
         const isMe = p.userId === currentUserId;
         return {
             ...p,
@@ -159,9 +171,28 @@ export default function CurrentPayScreen() {
     const pendingMembers = displayMembers.filter(m => m.status === 'PENDING' && !m.isMe);
     const hasPendingMembers = pendingMembers.length > 0;
 
+    const handleGoBackToChat = () => {
+        if (chatRoomId && partyId) {
+            const isAllSettled = !hasPendingMembers;
+
+            // 채팅 페이지 경로: /chat/:chatRoomId/:partyId
+            navigate(`/chat/${chatRoomId}/${partyId}`, { 
+                replace: true,
+                state: { 
+                    // ChatScreen으로 isSettled 상태를 전달
+                    isSettled: isAllSettled
+                }
+            });
+        } else {
+            // 필수 정보가 없으면 이전 화면으로 돌아가거나 홈으로 이동
+            console.warn("채팅방 ID 또는 파티 ID가 없어 이전 채팅방으로 이동할 수 없습니다. 직전 페이지로 돌아갑니다.");
+            navigate('/'); 
+        }
+    };
+
     return (
         <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidde"> 
-            <Header title="정산 현황" />
+            <Header title="정산 현황" onBack={handleGoBackToChat} />
 
             {/* 지불한 택시비 및 계좌 정보 */}
             <div className="w-full space-y-4 px-4 pb-8">
@@ -239,13 +270,13 @@ export default function CurrentPayScreen() {
                                             w-[88px] h-8 flex items-center justify-center 
                                         `}
                                         style={{ 
-                                            backgroundColor: member.status === 'DONE' ? '#FC7E2A' : '#D6D6D6'
+                                            backgroundColor: member.status === 'DONE' ? '#D6D6D6' : '#FC7E2A'
                                         }}
                                         // 총대가 아니거나, 이미 완료된 경우 버튼 비활성화
                                         disabled={!isHost || member.status === 'DONE'} 
                                     >
                                         <span className="text-body-semibold-14"
-                                            style={{ color: member.status === 'DONE' ? '#FFF' : '#444' }}>
+                                            style={{ color: member.status === 'DONE' ? '#444' : '#FFF' }}>
                                             {member.status === 'DONE' ? '정산 완료' : '정산 완료'}
                                         </span>
                                     </button>

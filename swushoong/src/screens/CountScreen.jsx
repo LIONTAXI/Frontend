@@ -194,6 +194,7 @@ export default function CountScreen () {
         }
 
         let accountNumber = accountNumberCandidate.replace(/[^0-9-]/g, '');
+        //let accountNumber = accountNumberCandidate.replace(/[^0-9]/g, '');
         
         console.log("▶️ 최종 Request Body:", {
         "taxiPartyId": finalTaxiPartyId,

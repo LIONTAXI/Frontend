@@ -8,15 +8,16 @@ import ActionButton from "../components/ActionButton"; 
 import ChatInput from "../components/ChatInput";
 import MatchInfo from "../components/MatchInfo";
 import MenuIcon from "../assets/icon/icon_menu.svg";
-import { closeTaxiParty, closeChatRoom, connectStomp, sendChatMessage, getChatHistory, getTaxiPartyInfo, sendImageMessage } from "../api/chat"; 
+import { closeTaxiParty, closeChatRoom, connectStomp, sendChatMessage, getChatHistory, getTaxiPartyInfo, sendImageMessage, getPartyMembersForReview } from "../api/chat"; 
 import { getCurrentUserId } from "../api/token";
+import {getCurrentSettlementId} from "../api/settlements";
+
 
 const getUserIdFromAuth = () => {
     // token.js의 getCurrentUserId를 호출하여 실제 ID 가져옴 
     return getCurrentUserId();
 };
 
-// --- 메인 채팅 화면 컴포넌트 ---
 export default function ChatScreen() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -100,6 +101,11 @@ export default function ChatScreen() {
     const handleOpenMenu = () => { setIsMenuOpen(true); };
     const handleCloseMenu = () => { setIsMenuOpen(false); };
 
+    const navigateToMemberList = () => {
+        handleCloseMenu();
+        navigate(`/member-list/${partyId}`); 
+    };
+
     // '택시팟 끝내기' 메뉴 항목 클릭 핸들러 (최종 종료 API 호출)
     const handleCloseChatRoom = async () => {
         handleCloseMenu();
@@ -108,7 +114,7 @@ export default function ChatScreen() {
             try {
                 await closeChatRoom(chatRoomId); 
                 console.log(`채팅방 ${chatRoomId} 최종 종료 성공.`);
-                navigate('/review-member');
+                navigate('/chat-list');
             } catch (error) {
                 console.error("택시팟 최종 종료 실패:", error);
                 alert(`택시팟 최종 종료 실패: ${error.message || '알 수 없는 오류'}`);
@@ -118,15 +124,46 @@ export default function ChatScreen() {
         }
     };
 
-    const navigateToSettlement = (targetPath) => {
+    const navigateToSettlement = async (targetPath) => {
         handleCloseMenu();
+
+        // 1. 필요한 경우에만 settlementId를 조회 (정산 관련 페이지로 이동 시)
+        let settlementIdToPass = null;
+
+        if (targetPath === '/please' || targetPath === '/current-pay-member') {
+        try {
+            // 2. 현재 파티의 정산 ID를 조회하는 API 호출
+            const settlementStatus = await getCurrentSettlementId(partyId);
+            
+            if (settlementStatus.hasSettlement && settlementStatus.settlementId) {
+                settlementIdToPass = settlementStatus.settlementId;
+                // ChatScreen의 상태도 업데이트 (선택 사항이지만 일관성을 위해 좋음)
+                setIsSettlementEntered(true); 
+                console.log(`✅ 정산 ID 조회 성공: ${settlementIdToPass}`);
+            } else {
+                console.warn("⚠️ 정산 ID 조회 실패: 정산 정보가 아직 생성되지 않았습니다.");
+                // 정산 정보 입력 페이지(/confirm)가 아닌데 ID가 없다면 오류로 간주할 수도 있음.
+                if (targetPath !== '/confirm') {
+                    alert("정산 정보가 아직 입력되지 않았습니다. 총대에게 문의해 주세요.");
+                    return; // 이동 중단
+                }
+            }
+        } catch (error) {
+            console.error("정산 ID 조회 중 오류 발생:", error);
+            alert("정산 정보를 불러오는 중 오류가 발생했습니다.");
+            return; // 이동 중단
+        }
+    }
         
         // CountScreen이 필요로 하는 필수 정보만 state에 담아 전달
         const settlementData = {
-            taxiPartyId: partyId, // 🚨 수정: URL 파라미터의 partyId를 taxiPartyId로 전달
+            taxiPartyId: partyId, // URL 파라미터의 taxiPartyId 전달
             isHost: isHost,       // Host 여부 전달
             isSettlementEntered: isSettlementEntered,
-            // participants 목록은 CountScreen이 API로 직접 조회합니다.
+            chatRoomId: chatRoomId,
+            // participants 목록은 CountScreen이 API로 직접 조회
+
+            settlementId: settlementIdToPass,
         };
 
         navigate(targetPath, { state: settlementData });
@@ -135,7 +172,7 @@ export default function ChatScreen() {
 
     // 메뉴 항목 정의 
     const hostMenuItems = [
-        { label: '시용자 목록', onClick: () => { handleCloseMenu(); /* navigate('/member-profile') */ }},
+        { label: '사용자 목록',  onClick: navigateToMemberList },
         {  
             label: isSettlementEntered ? '정산 현황' : '정산 정보 입력', 
             onClick: () => { 
@@ -146,12 +183,12 @@ export default function ChatScreen() {
         { label: '택시팟 끝내기', onClick: handleCloseChatRoom },
     ];
     const memberMenuItems = [
-        { label: '사용자 목록', onClick: () => { handleCloseMenu(); /* navigate('/member-profile') */ }},
+        { label: '사용자 목록', onClick: navigateToMemberList},
     ];
     if (isSettlementEntered) {
         memberMenuItems.splice(1, 0, {
             label: '정산 정보', 
-            onClick: () => { navigateToSettlement('/current-pay-member'); /* navigate('/view-settlement-info') */ }
+            onClick: () => { navigateToSettlement('/current-pay-member'); }
         });
     }
     const menuItems = isHost ? hostMenuItems : memberMenuItems;
@@ -164,8 +201,35 @@ export default function ChatScreen() {
         }
     };
 
+    
+    // 정산 완료 상태를 확인하고 처리하는 useEffect 
+    useEffect(() => {
+        const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
+        if (location.state && location.state.settlementCompleted) {
+            setMatchStatus('ended');
+            setIsSettlementEntered(true);
+            setMessages(prev => {
+                const isDuplicate = prev.length > 0 && prev[prev.length - 1].type === 'system' && prev[prev.length - 1].text === SETTLEMENT_COMPLETE_MESSAGE;
+                if (isDuplicate) return prev; 
+                return [ ...prev, { id: Date.now(), type: 'system', text: SETTLEMENT_COMPLETE_MESSAGE, timestamp: Date.now() }];
+            });
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location, navigate, setMessages]); 
+
+    // 최종 정산 완료 상태 처리 
+    useEffect(() => {
+        if (location.state && location.state.isSettled) {
+            console.log("🔥 모든 정산이 최종 완료되었습니다. isSettled 상태 업데이트.");
+            setMatchStatus('ended');
+            setIsSettlementEntered(true);
+            setIsSettled(true);
+            navigate(location.pathname, { replace: true, state: {} }); 
+        }
+    }, [location, navigate]);
+
     // ------------------------------------------------------------------
-    // 초기 로딩 및 STOMP 연결 로직 (chatRoomId, currentUserId 의존)
+    // 초기 로딩 및 STOMP 연결 로직
     // ------------------------------------------------------------------
     useEffect(() => {
         if (!currentUserId || chatRoomId <= 0 || partyId <= 0) {
@@ -179,7 +243,7 @@ export default function ChatScreen() {
         return; 
     }
 
-        // 🚨 1단계: 새로운 연결을 시도하기 전에 기존 연결이 있으면 확실히 종료합니다.
+        // 1단계: 새로운 연결을 시도하기 전에 기존 연결이 있으면 확실히 종료
     if (stompClientRef.current && stompClientRef.current.connected) {
         console.log("기존 STOMP 연결을 정리합니다.");
         stompClientRef.current.deactivate();
@@ -195,6 +259,14 @@ export default function ChatScreen() {
                 const partyInfo = await getTaxiPartyInfo(partyId, currentUserId);
                 setIsHost(partyInfo.hostId === currentUserId);
                 setMatchInfo(partyInfo);
+
+                const settlementStatus = await getCurrentSettlementId(partyId);
+                if (settlementStatus.hasSettlement && settlementStatus.settlementId) {
+                    setIsSettlementEntered(true);
+                    console.log("✅ 채팅방 로드 시 정산 정보 입력 상태 확인: TRUE");
+                } else {
+                    setIsSettlementEntered(false);
+                }
 
                 const historyData = await getChatHistory(chatRoomId);
                 console.log("채팅 기록 로드 성공:", historyData);
@@ -217,7 +289,7 @@ export default function ChatScreen() {
         loadChatHistory();
 
         // 컴포넌트 언마운트 시 STOMP 연결 종료
-        // 🚨 2단계: 언마운트 시 정리 로직 (기존 로직 유지)
+        // 언마운트 시 정리 로직 
     return () => {
         if (stompClientRef.current && stompClientRef.current.connected) {
             console.log("컴포넌트 언마운트 시 STOMP 연결 종료");
@@ -229,40 +301,14 @@ export default function ChatScreen() {
 
     // 메시지 상태가 업데이트될 때마다 스크롤
     useEffect(() => {
-    // DOM 업데이트가 완료된 후 스크롤이 실행되도록 짧은 딜레이를 줍니다.
+    // DOM 업데이트가 완료된 후 스크롤이 실행되도록 짧은 딜레이
     const timer = setTimeout(() => {
         scrollToBottom();
-    }, 0); // 딜레이를 0ms로 설정해도 비동기적으로 실행되어 DOM 업데이트를 기다리는 효과가 있습니다.
+    }, 0); // 딜레이를 0ms로 설정해도 비동기적으로 실행
 
     return () => clearTimeout(timer);
 }, [messages]);
 
-
-    // 정산 완료 상태를 확인하고 처리하는 useEffect (기존 로직 유지)
-    useEffect(() => {
-        const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
-        if (location.state && location.state.settlementCompleted) {
-            setMatchStatus('ended');
-            setIsSettlementEntered(true);
-            setMessages(prev => {
-                const isDuplicate = prev.length > 0 && prev[prev.length - 1].type === 'system' && prev[prev.length - 1].text === SETTLEMENT_COMPLETE_MESSAGE;
-                if (isDuplicate) return prev; 
-                return [ ...prev, { id: Date.now(), type: 'system', text: SETTLEMENT_COMPLETE_MESSAGE, timestamp: Date.now() }];
-            });
-            navigate(location.pathname, { replace: true, state: {} });
-        }
-    }, [location, navigate, setMessages]); 
-
-    // 최종 정산 완료 상태 처리 (기존 로직 유지)
-    useEffect(() => {
-        if (location.state && location.state.isSettled) {
-            console.log("🔥 모든 정산이 최종 완료되었습니다. isSettled 상태 업데이트.");
-            setMatchStatus('ended');
-            setIsSettlementEntered(true);
-            setIsSettled(true);
-            navigate(location.pathname, { replace: true, state: {} }); 
-        }
-    }, [location, navigate]);
 
     // 메시지 전송 핸들러
     const handleSendMessage = useCallback((text) => {
@@ -273,7 +319,7 @@ export default function ChatScreen() {
         sendChatMessage(stompClientRef.current, chatRoomId, text, currentUserId);
     }, [chatRoomId, currentUserId]);
 
-    // 💡 이미지 파일 선택 핸들러
+    // 이미지 파일 선택 핸들러
 const handleFileSelect = useCallback(async (file) => {
     if (!chatRoomId || !currentUserId || !partyId) {
         console.error("채팅방, 파티 ID 또는 사용자 ID가 유효하지 않아 파일 전송 불가");
@@ -281,7 +327,7 @@ const handleFileSelect = useCallback(async (file) => {
     }
     if (!file) return;
 
-    // 💡 전송 중 시스템 메시지 추가 (선택 사항)
+    // 전송 중 시스템 메시지 추가
     const tempMessageId = Date.now();
     setMessages((prev) => [...prev, {
         id: tempMessageId,
@@ -292,22 +338,17 @@ const handleFileSelect = useCallback(async (file) => {
 
     try {
         // 1. 파일을 서버에 업로드하고 메시지 전송 요청
-        // sendImageMessage 함수는 chat.js에 추가한 API 함수를 사용합니다.
         const response = await sendImageMessage(file, partyId, currentUserId, chatRoomId);
         
         console.log("이미지 전송 요청 성공:", response);
 
-        // 2. 서버가 웹소켓으로 실제 메시지를 다시 보낼 때까지 기다립니다.
-        // 여기서는 임시 시스템 메시지를 제거하거나 성공 메시지로 교체할 필요는 없습니다. 
-        // 서버에서 웹소켓을 통해 최종 메시지 (텍스트 또는 이미지)를 돌려주면
-        // handleStompMessage 콜백이 이를 처리할 것입니다.
 
     } catch (error) {
         console.error("이미지 전송 실패:", error);
         
-        // 💡 전송 실패 시 시스템 메시지 업데이트 또는 실패 메시지 추가
+        // 전송 실패 시 시스템 메시지 업데이트 또는 실패 메시지 추가
         setMessages((prev) => {
-            // 임시 시스템 메시지 제거 시도 (선택 사항)
+            // 임시 시스템 메시지 제거 시도 
             const filtered = prev.filter(msg => msg.id !== tempMessageId);
             return [...filtered, {
                 id: Date.now() + 1,
@@ -327,7 +368,6 @@ const handleFileSelect = useCallback(async (file) => {
     const handleEndMatch = async () => {
         if (matchStatus === 'active' && isHost && partyId && currentUserId) {
             try {
-                // 🚨 partyId와 currentUserId 사용
                 await closeTaxiParty(partyId, currentUserId);
                 console.log(`매칭 파티 ${partyId} 종료 API 호출 성공.`);
 
@@ -360,15 +400,14 @@ const handleFileSelect = useCallback(async (file) => {
             }
             
             if (targetPath) {
-                navigateToSettlement(targetPath); // 💡 수정: 정산 페이지로 이동
+                navigateToSettlement(targetPath);
             }
         }
     };
 
-    // 렌더링 (기존 로직 유지)
+    // 렌더링
     return (
         <div className={`${isMenuOpen ? 'overflow-hidden' : 'overflow-y-auto'} relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col`}>
-            <div className="flex flex-col flex-grow w-full pt-[14px]"></div>
             <Header 
                 title="택시팟 채팅" 
                 onBack={() => navigate(-1)} 
@@ -380,7 +419,7 @@ const handleFileSelect = useCallback(async (file) => {
             {/* 로딩 스피너 및 오류 처리 */}
             {isLoading && (
                 <div className="flex flex-grow justify-center items-center text-body-regular-16 text-black-70">
-                    채팅방 정보를 불러오는 중입니다... 🔄
+                    채팅방 정보를 불러오는 중입니다... 
                 </div>
             )}
             

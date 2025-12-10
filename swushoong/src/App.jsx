@@ -31,8 +31,9 @@ import ChatScreen from "./screens/ChatScreen";
 import CountScreen from "./screens/CountScreen"; 
 import ResultScreen from "./screens/ResultScreen";
 import CurrentPayScreen from "./screens/CurrentPayScreen";
-import TaxiMemberScreen from "./screens/TexiMemberScreen";
-import TaxiSwuScreen from "./screens/TaxiSwuScreen";
+//import TaxiMemberScreen from "./screens/TexiMemberScreen";
+//import TaxiSwuScreen from "./screens/TaxiSwuScreen";
+import MemberListScreen from "./screens/MemberListScreen";
 import PayMemberScreen from "./screens/PayMemberScreen";
 
 /* --- 후기 === */
@@ -72,14 +73,13 @@ export default function App() {
           <Route path="/confirm" element={<CountScreen/>} /> 
           <Route path="/send" element={<ResultScreen/>} />
           <Route path="/please" element={<CurrentPayScreen />} /> 
-          <Route path="/taxi-member" element={<TaxiMemberScreen/>} />
-          <Route path="/taxi-swu" element={<TaxiSwuScreen/>} />
+          <Route path="/member-list/:partyId" element={<MemberListScreen />} />
           <Route path="/current-pay-member" element={<PayMemberScreen />} /> 
 
           {/* === 후기 === */}
           <Route path="/review-member" element={<ReviewMemberScreen />} />   
           <Route path="/review-swu" element={<ReviewSwuScreen />} />  
-          <Route path="/review" element={<ReviewScreen />} />  
+          <Route path="/member-profile/:userId" element={<ReviewScreen />} />  
           <Route path="/review-arrive" element={<ReviewArriveScreen />} /> 
 
           <Route path="/review-all/:taxiPartyId/:revieweeId" element={<ReviewAllScreen />} />
