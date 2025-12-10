@@ -43,14 +43,29 @@ export default function NotificationScreen() {
   };
 
   // 서버에서 내려온 알림 → 화면에서 쓰는 형태로 매핑
-  const mapNotification = (item) => ({
-    id: item.id,
-    emoji: item.emoji || "🔔", // 서버에 emoji 필드 없으면 기본 벨 아이콘
-    title: item.title,
-    message: item.body,
-    time: formatTime(item.createdAt),
-    unread: item.read === false, // read=false → 미확인
-  });
+  const mapNotification = (item) => {
+    // type / targetType 그대로 들고 오기
+    const type = item.type || null;
+    const targetType = item.targetType || null;
+
+    // 택시팟 id 후보들 중 하나 사용 (명세에 따라 targetId / taxiPotId 등)
+    const taxiPotId =
+      item.taxiPotId ??
+      item.targetId ??
+      null;
+
+    return {
+      id: item.id,
+      type,          // 예: "TAXI_PARTICIPATION_REQUEST"
+      targetType,    // 예: "TAXI_PARTY"
+      taxiPotId,     // JoinTexiMember 로 넘길 값
+      emoji: "🔔",   // 서버에서 이모지 안 주니 일단 고정
+      title: item.title,
+      message: item.body,
+      time: formatTime(item.createdAt),
+      unread: item.read === false, // read=false → 미확인
+    };
+  };
 
   // 알림 목록 + 미확인 개수 한번에 새로고침
   const refreshNotifications = useCallback(async () => {
@@ -130,7 +145,19 @@ export default function NotificationScreen() {
       }
     }
 
-    // TODO: 알림 타입(type/targetType 등)에 따라 상세 페이지/채팅 등으로 이동
+    // 택시팟 참여 요청 알림이면 JoinTexiMember 로 이동
+    if (
+      item.type === "TAXI_PARTICIPATION_REQUEST" &&
+      item.targetType === "TAXI_PARTY" &&
+      item.taxiPotId
+    ) {
+      navigate("/join-taxi", {
+        state: { taxiPotId: item.taxiPotId },
+      });
+      return;
+    }
+
+    // TODO: 다른 타입(STORY, 채팅 등)이 생기면 여기에 분기 추가
   };
 
   return (

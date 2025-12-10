@@ -81,13 +81,9 @@ export async function getMyInfo() {
     method: "GET",
   });
 
-  // imgUrl이 /images/... 같이 상대 경로로 오면 절대 경로로 변환
-  if (data && typeof data.imgUrl === "string") {
-    if (!data.imgUrl.startsWith("http")) {
-      data.imgUrl = `${BASE_URL}${data.imgUrl}`;
-    }
-  }
-
+  // imgUrl을 여기서 건드리지 않음
+  // (상대경로든 절대경로든 그대로 두고, 화면 쪽에서
+  // fetchProfileImageWithAuth 로 처리하도록 위임)
   return data;
 }
 
@@ -165,16 +161,24 @@ export function getProfileReviewSummary(userId) {
  * ========================= */
 
 // imgPath: "/api/users/3/profile-image" 또는 "https://..."
-// 반환: blob URL (예: "blob:https://localhost:5173/xxxx") 또는 null
+// 반환: blob URL (예: "blob:https://localhost:5173/xxxx") 또는 원본 URL 또는 null
 export async function fetchProfileImageWithAuth(imgPath) {
   if (!imgPath) return null;
 
-  // 토큰 읽기
+  // 절대 URL인지 검사
+  const isAbsolute = /^https?:\/\//.test(imgPath);
+
+  // 절대 URL이면서 /api/ 가 아닌 경우 → 정적 파일로 보고 그대로 사용
+  //     예: "https://swushoong.click/home/ubuntu/.../uploads/xxx.png"
+  if (isAbsolute && !imgPath.includes("/api/")) {
+    return imgPath; // async 함수라 Promise.resolve(imgPath) 형태로 돌아감
+  }
+
+  // 여기부터는 보호된 API 경로 처리 (/api/...)
   const token =
     localStorage.getItem("accessToken") || localStorage.getItem("token");
 
-  // 절대/상대 경로 모두 지원
-  const url = imgPath.startsWith("http") ? imgPath : `${BASE_URL}${imgPath}`;
+  const url = isAbsolute ? imgPath : `${BASE_URL}${imgPath}`;
 
   const headers = {};
   if (token && token !== "null" && token !== "undefined") {
