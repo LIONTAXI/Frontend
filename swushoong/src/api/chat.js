@@ -158,14 +158,13 @@ export function connectStomp(chatRoomId, onMessageReceived) {
             // 서버 설정에 따라 토큰을 URL에 포함해야 할 수도 있습니다.
             //return new SockJS(WEBSOCKET_URL + `?token=${encodeURIComponent(token)}`);
             return new SockJS(urlWithToken);
+            //return new SockJS(urlWithoutToken);
         },
 
     connectHeaders: {
       'Authorization': `Bearer ${token}`, // 인증 헤더 
     },
     forceBinary: true,
-
-
     debug: function (str) {
       console.log('STOMP Debug:', str);
     },
