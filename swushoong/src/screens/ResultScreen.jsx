@@ -122,7 +122,7 @@ export default function ResultScreen() {
         localStorage.removeItem("currentChatRoomId");
 
         navigate(returnPath, { 
-            replace: true, // 뒤로가기 스택에서 정산 화면을 제거
+            //replace: true, // 뒤로가기 스택에서 정산 화면을 제거
             state: { 
                 settlementCompleted: true, 
                 settlementId: settlementData.settlementId 

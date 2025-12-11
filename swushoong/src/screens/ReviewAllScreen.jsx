@@ -162,7 +162,7 @@ export default function ReviewAllScreen() { 
         setWouldMeetAgain(null);
             
             // ✅ 후기 작성 완료 후, 멤버 목록으로 돌아가도록 수정
-            //navigate(-1); 
+            navigate(-1); 
 
         } catch (error) {
             console.error("❌ 후기 작성 실패:", error);

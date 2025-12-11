@@ -76,10 +76,10 @@ export default function App() {
 
           {/* === 후기 === */}
           <Route path="/review-member" element={<ReviewMemberScreen />} />   
-          <Route path="/review-swu" element={<ReviewSwuScreen />} />  
+          <Route path="/review-swu" element={<ReviewSwuScreen />} /> 
+          <Route path="/review-all/:taxiPartyId/:revieweeId" element={<ReviewAllScreen />} /> 
           <Route path="/member-profile/:userId" element={<ReviewScreen />} />  
-          <Route path="/review-arrive" element={<ReviewArriveScreen />} /> 
-          <Route path="/review-all/:taxiPartyId/:revieweeId" element={<ReviewAllScreen />} />
+          <Route path="/review/:reviewId" element={<ReviewArriveScreen />} /> 
 
           <Route path="/home" element={<HomeScreen />} />
           <Route path="/add-taxi" element={<AddTaxiScreen />} />
