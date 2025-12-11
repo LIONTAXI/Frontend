@@ -15,14 +15,12 @@ function buildHeaders(options = {}) {
   const token =
     localStorage.getItem("accessToken") || localStorage.getItem("token");
 
-  // 기본 헤더
   const headers = isFormData
     ? {}
     : {
         "Content-Type": "application/json",
       };
 
-  // 토큰이 실제 값일 때만 Authorization 추가
   if (token && token !== "null" && token !== "undefined") {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -73,21 +71,15 @@ async function apiRequest(path, options = {}) {
  *  마이페이지 / 프로필
  * ========================= */
 
-// 마이페이지_프로필수정_기존정보조회
 const MY_INFO_URI = "/api/users/info";
 
 export async function getMyInfo() {
   const data = await apiRequest(MY_INFO_URI, {
     method: "GET",
   });
-
-  // imgUrl을 여기서 건드리지 않음
-  // (상대경로든 절대경로든 그대로 두고, 화면 쪽에서
-  // fetchProfileImageWithAuth 로 처리하도록 위임)
   return data;
 }
 
-// 마이페이지_프로필수정_프로필사진업로드
 const PROFILE_IMAGE_URI = "/api/users/profile-image";
 
 export function uploadProfileImage(file) {
@@ -127,9 +119,10 @@ export function getBlockedUsers() {
   });
 }
 
-// 차단 해제
-export function unblockUser(blockedId) {
-  const payload = { blockedId };
+// ✅ 차단 해제
+//  요청 스펙: { "blockerId": 1, "blockedId": 2 }
+export function unblockUser(blockerId, blockedId) {
+  const payload = { blockerId, blockedId };
 
   return apiRequest(BLOCKS_URI, {
     method: "DELETE",
@@ -141,8 +134,6 @@ export function unblockUser(blockedId) {
  *  리뷰 요약 프로필 정보
  * ========================= */
 
-// 프로필 요약 정보 조회 (리뷰 기반)
-// GET /api/reviews/profile/{userId}
 const REVIEW_PROFILE_URI = "/api/reviews/profile";
 
 export function getProfileReviewSummary(userId) {
@@ -160,21 +151,15 @@ export function getProfileReviewSummary(userId) {
  *  보호된 프로필 이미지 blob URL 헬퍼
  * ========================= */
 
-// imgPath: "/api/users/3/profile-image" 또는 "https://..."
-// 반환: blob URL (예: "blob:https://localhost:5173/xxxx") 또는 원본 URL 또는 null
 export async function fetchProfileImageWithAuth(imgPath) {
   if (!imgPath) return null;
 
-  // 절대 URL인지 검사
   const isAbsolute = /^https?:\/\//.test(imgPath);
 
-  // 절대 URL이면서 /api/ 가 아닌 경우 → 정적 파일로 보고 그대로 사용
-  //     예: "https://swushoong.click/home/ubuntu/.../uploads/xxx.png"
   if (isAbsolute && !imgPath.includes("/api/")) {
-    return imgPath; // async 함수라 Promise.resolve(imgPath) 형태로 돌아감
+    return imgPath;
   }
 
-  // 여기부터는 보호된 API 경로 처리 (/api/...)
   const token =
     localStorage.getItem("accessToken") || localStorage.getItem("token");
 
@@ -194,10 +179,7 @@ export async function fetchProfileImageWithAuth(imgPath) {
   }
 
   if (!res.ok) {
-    console.error(
-      "[myApi] 프로필 이미지 blob 요청 실패:",
-      res.status
-    );
+    console.error("[myApi] 프로필 이미지 blob 요청 실패:", res.status);
     return null;
   }
 

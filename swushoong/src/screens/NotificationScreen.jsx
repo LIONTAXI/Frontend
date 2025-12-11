@@ -8,6 +8,7 @@ import {
   connectNotificationStream,
   readNotification,
 } from "../api/notification";
+import { getMyChatRooms } from "../api/chat";
 
 export default function NotificationScreen() {
   const navigate = useNavigate();
@@ -16,12 +17,11 @@ export default function NotificationScreen() {
   const rawUserId = localStorage.getItem("userId");
   const USER_ID = rawUserId ? Number(rawUserId) : null;
 
-  // API에서 가져온 알림 목록
+  // 알림 목록 + 미확인 개수
   const [notifications, setNotifications] = useState([]);
-  // 필요하면 쓸 수 있도록 미확인 개수도 state로 보관 (지금은 UI에 안 씀)
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // createdAt → "11:44" 또는 "10/31" 형태로 변환
+  // createdAt → "11:44" 또는 "10/31"
   const formatTime = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -33,41 +33,60 @@ export default function NotificationScreen() {
     const hh = String(date.getHours()).padStart(2, "0");
     const mm = String(date.getMinutes()).padStart(2, "0");
 
-    if (isToday) {
-      return `${hh}:${mm}`; // 오늘이면 시:분
-    }
+    if (isToday) return `${hh}:${mm}`;
 
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
-    return `${month}/${day}`; // 과거는 MM/DD
+    return `${month}/${day}`;
   };
 
-  // 서버에서 내려온 알림 → 화면에서 쓰는 형태로 매핑
+  // 서버 알림 → 화면용 객체로 매핑
   const mapNotification = (item) => {
-    // type / targetType 그대로 들고 오기
-    const type = item.type || null;
-    const targetType = item.targetType || null;
+    const type = item.type || item.notificationType || null;
+    const targetType = item.targetType || item.target_type || null;
+    const targetId = item.targetId ?? item.target_id ?? null;
 
-    // 택시팟 id 후보들 중 하나 사용 (명세에 따라 targetId / taxiPotId 등)
-    const taxiPotId =
-      item.taxiPotId ??
-      item.targetId ??
-      null;
+    let taxiPotId = null;
+    let roomId = null;
+    let settlementId = null;
+    let reviewId = null;
+
+    // Target Type 에 따라 ID들 분리
+    if (targetType === "TAXI_PARTY") {
+      // 택시팟 자체가 타깃인 경우
+      taxiPotId = item.taxiPartyId ?? item.taxiPotId ?? targetId;
+    } else if (targetType === "TAXI_ROOM") {
+      // 채팅방이 타깃인 경우 (현재 백엔드에서 roomId에 taxiPartyId를 넣어줄 수도 있음)
+      roomId = item.roomId ?? targetId;
+      taxiPotId =
+        item.taxiPartyId ??
+        item.taxiPotId ??
+        item.partyId ??
+        null;
+    } else if (targetType === "SETTLEMENT") {
+      settlementId = item.settlementId ?? targetId;
+    } else if (targetType === "REVIEW") {
+      reviewId = item.reviewId ?? targetId;
+    }
 
     return {
       id: item.id,
       type,          // 예: "TAXI_PARTICIPATION_REQUEST"
-      targetType,    // 예: "TAXI_PARTY"
-      taxiPotId,     // JoinTexiMember 로 넘길 값
-      emoji: "🔔",   // 서버에서 이모지 안 주니 일단 고정
+      targetType,    // 예: "TAXI_PARTY" / "TAXI_ROOM"
+      targetId,      // raw targetId
+      taxiPotId,
+      roomId,
+      settlementId,
+      reviewId,
+      emoji: "🔔",
       title: item.title,
       message: item.body,
       time: formatTime(item.createdAt),
-      unread: item.read === false, // read=false → 미확인
+      unread: item.read === false,
     };
   };
 
-  // 알림 목록 + 미확인 개수 한번에 새로고침
+  // 알림 목록 + 미확인 개수 새로고침
   const refreshNotifications = useCallback(async () => {
     if (!USER_ID) return;
 
@@ -88,14 +107,14 @@ export default function NotificationScreen() {
     }
   }, [USER_ID]);
 
-  // 최초 진입 시 + SSE 메시지 올 때마다 목록 갱신
+  // 최초 진입 + SSE 메시지 수신 시 목록 갱신
   useEffect(() => {
     if (!USER_ID) {
       console.warn("[NotificationScreen] USER_ID가 없습니다.");
       return;
     }
 
-    // 최초 1회 조회
+    // 최초 1회
     refreshNotifications();
 
     // SSE 연결
@@ -108,64 +127,199 @@ export default function NotificationScreen() {
 
     es.onmessage = (event) => {
       console.log("[NotificationScreen] SSE 메시지:", event.data);
-      // payload가 어떤 형태든, 일단 이벤트가 오면 목록을 다시 불러온다
       refreshNotifications();
     };
 
     es.onerror = (err) => {
       console.error("[NotificationScreen] SSE 에러:", err);
-      // 오류 발생 시 연결 닫기
       es.close();
     };
 
-    // 언마운트 시 SSE 해제
     return () => {
       console.log("[NotificationScreen] SSE close");
       es.close();
     };
   }, [USER_ID, refreshNotifications]);
 
+  // 알림 클릭 핸들러
   const handleClickNotification = async (item) => {
     console.log("알림 클릭", item);
 
-    // 읽지 않은 알림이면 읽음 처리 API 호출
+    // 1) 안 읽은 알림이면 읽음 처리
     if (USER_ID && item.unread) {
       try {
         await readNotification(item.id, USER_ID);
-        // 로컬 상태에서도 읽음으로 변경
         setNotifications((prev) =>
           prev.map((n) =>
             n.id === item.id ? { ...n, unread: false } : n
           )
         );
-        // 미확인 개수도 1 감소 (0 아래로는 내려가지 않게)
         setUnreadCount((prev) => Math.max(prev - 1, 0));
       } catch (err) {
         console.error("[NotificationScreen] 알림 읽음 처리 실패:", err);
       }
     }
 
-    // 택시팟 참여 요청 알림이면 JoinTexiMember 로 이동
-    if (
-      item.type === "TAXI_PARTICIPATION_REQUEST" &&
-      item.targetType === "TAXI_PARTY" &&
-      item.taxiPotId
-    ) {
-      navigate("/join-taxi", {
-        state: { taxiPotId: item.taxiPotId },
-      });
-      return;
-    }
+    // 2) 타입별로 네비게이션 분기
+    switch (item.type) {
+      // ✅ 택시팟 참여 요청 알림 → 참여 요청 목록
+      case "TAXI_PARTICIPATION_REQUEST": {
+        if (item.targetType === "TAXI_PARTY" && item.taxiPotId) {
+          navigate("/join-taxi", {
+            state: { taxiPotId: item.taxiPotId },
+          });
+        }
+        break;
+      }
 
-    // TODO: 다른 타입(STORY, 채팅 등)이 생기면 여기에 분기 추가
+      // ✅ 택시팟 참여 수락 알림 → 채팅방 이동
+      case "TAXI_PARTICIPATION_ACCEPTED": {
+        // 1차로 알림에서 바로 꺼낼 수 있는 값
+        let roomId = item.roomId != null ? Number(item.roomId) : null;
+        let partyId =
+          item.taxiPotId != null ? Number(item.taxiPotId) : null;
+
+        // 🔥 특수케이스: targetType이 TAXI_ROOM인데 taxiPotId가 없으면
+        // 백엔드가 roomId에 taxiPartyId를 넣어준 것으로 보고 재해석
+        if (item.targetType === "TAXI_ROOM" && roomId && !partyId) {
+          console.log(
+            "[NotificationScreen] TAXI_ROOM 알림에서 roomId를 partyId로 재해석",
+            { roomId }
+          );
+          partyId = roomId; // 이 값을 taxiPartyId로 사용
+          roomId = null;    // 실제 chatRoomId는 아직 모름
+        }
+
+        console.log("[NotificationScreen] 수락 알림 클릭:", {
+          rawRoomId: item.roomId,
+          rawTaxiPotId: item.taxiPotId,
+          mappedRoomId: roomId,
+          mappedPartyId: partyId,
+          targetType: item.targetType,
+        });
+
+        try {
+          // 둘 중 하나라도 비어 있으면 내 채팅방 목록에서 보충
+          if (!roomId || !partyId) {
+            const roomsResponse = await getMyChatRooms();
+
+            // 응답 형태: { matchingRooms: [...], finishedRooms: [...] }
+            const allRooms = [
+              ...(roomsResponse.matchingRooms || []),
+              ...(roomsResponse.finishedRooms || []),
+            ];
+
+            console.log(
+              "[NotificationScreen] getMyChatRooms allRooms:",
+              allRooms
+            );
+
+            // (1) partyId만 있고 roomId가 없는 경우 → 같은 파티 ID 가진 방 찾기
+            if (partyId && !roomId) {
+              const matched = allRooms.find((r) => {
+                const rPartyId = Number(
+                  r.taxiPartyId ??
+                  r.partyId ??
+                  r.taxiPotId
+                );
+                return rPartyId === partyId;
+              });
+
+              if (matched) {
+                roomId = Number(
+                  matched.chatRoomId ??
+                  matched.roomId ??
+                  matched.id
+                );
+              }
+            }
+
+            // (2) roomId만 있고 partyId가 없는 경우 → 같은 채팅방 ID 가진 방에서 파티 ID 찾기
+            if (roomId && !partyId) {
+              const matched = allRooms.find((r) => {
+                const rRoomId = Number(
+                  r.chatRoomId ??
+                  r.roomId ??
+                  r.id
+                );
+                return rRoomId === roomId;
+              });
+
+              if (matched) {
+                partyId = Number(
+                  matched.taxiPartyId ??
+                  matched.partyId ??
+                  matched.taxiPotId
+                );
+              }
+            }
+          }
+
+          if (roomId && partyId) {
+            console.log("[NotificationScreen] 채팅방으로 이동:", {
+              roomId,
+              partyId,
+            });
+            navigate(`/chat/${roomId}/${partyId}`);
+          } else {
+            console.warn(
+              "[NotificationScreen] 채팅 알림이지만 roomId/partyId를 찾지 못했습니다.",
+              { roomId, partyId }
+            );
+          }
+        } catch (err) {
+          console.error("[NotificationScreen] 채팅방 이동 중 오류:", err);
+        }
+        break;
+      }
+
+      // ✅ 정산 요청 알림 (SETTLEMENT_REQUEST)
+      case "SETTLEMENT_REQUEST": {
+        if (item.settlementId) {
+          navigate("/current-pay-member", {
+            state: {
+              settlementId: item.settlementId,
+              taxiPartyId: item.taxiPotId ?? null,
+            },
+          });
+        }
+        break;
+      }
+
+      // ✅ 정산 재촉 알림 (SETTLEMENT_REMIND)
+      case "SETTLEMENT_REMIND": {
+        if (item.settlementId) {
+          navigate("/please", {
+            state: {
+              settlementId: item.settlementId,
+              taxiPartyId: item.taxiPotId ?? null,
+            },
+          });
+        }
+        break;
+      }
+
+      // ✅ 후기 도착 알림 (REVIEW_ARRIVED)
+      case "REVIEW_ARRIVED": {
+        if (item.reviewId) {
+          // TODO: 실제 상세 페이지 라우트에 맞게 수정
+          navigate(`/review/${item.reviewId}`);
+        }
+        break;
+      }
+
+      default:
+        console.log(
+          "[NotificationScreen] 처리되지 않은 알림 타입:",
+          item.type
+        );
+    }
   };
 
   return (
     <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
-      {/* 상단 헤더 */}
       <Header title="알림" onBack={() => navigate(-1)} />
 
-      {/* 알림 리스트 */}
       <main className="flex-1 overflow-y-auto">
         <div className="flex flex-col">
           {notifications.map((item) => (
