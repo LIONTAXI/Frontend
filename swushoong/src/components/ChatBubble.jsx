@@ -1,8 +1,8 @@
 import React from "react";
 
 export default function ChatBubble({
-  side = "left",          // "left" | "right" | "system"
-  variant = "text",       // "text" | "image"
+  side = "left",          
+  variant = "text",      
   text = "",
   time = "",
   name = "",
@@ -13,12 +13,8 @@ export default function ChatBubble({
   isHostMessage = false,
   systemType = "default",
 }) {
-  // 💛 시스템 메시지 (가운데 노란 박스)
+  // 시스템 메시지
   if (side === "system") {
-    //const isYellowBox = systemType === 'system-match-ended' || 
-    //                   systemType === 'system-settlement-completed' ||
-     //                 systemType === 'system-connect';
-
     const isYellowBox = systemType !== 'system-member-kicked';
 
     if (isYellowBox) {
@@ -30,7 +26,6 @@ export default function ChatBubble({
             </div>
         );
     }
-
 
   if (systemType === 'system-member-kicked') {
         return (
@@ -53,7 +48,7 @@ export default function ChatBubble({
 
   const isLeft = side === "left";
 
-  // 아바타 (없으면 회색 동그라미)
+  // 아바타 
   const Avatar = () => (
     <div className="w-[30px] h-[30px] rounded-full border border-[#D6D6D6] bg-[#D9D9D9] overflow-hidden">
       {avatarUrl && (
@@ -131,16 +126,15 @@ export default function ChatBubble({
     </div>
   );
 
-  // 💬 왼쪽(상대)
+  // 왼쪽(상대)
   if (isLeft) {
     return (
       <div
-        className={`w-full flex justify-start items-start gap-2 ${className}`} // items-end -> items-start
+        className={`w-full flex justify-start items-start gap-2 ${className}`} 
       >
-        <Avatar /> {/* 아바타 표시 */}
+        <Avatar /> 
 
-        <div className="flex flex-col gap-1"> {/* gap-2 -> gap-1 */}
-          {/* 이름/나이 라인 */}
+        <div className="flex flex-col gap-1"> 
           {(name || age) && (
             <div className="flex items-center">
               {isHostMessage && (
@@ -154,14 +148,13 @@ export default function ChatBubble({
               </span>
             </div>
           )}
-          {/* 말풍선 + 시간 */}
           <BubbleRow />
         </div>
       </div>
     );
   }
 
-  // 💬 오른쪽(내 메시지) – 아바타/이름 없이 말풍선 + 시간만 (🔥 복원된 로직 🔥)
+  // 오른쪽(내 메시지)
   return (
     <div
       className={`w-full flex justify-end items-end ${className}`}

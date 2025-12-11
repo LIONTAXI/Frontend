@@ -9,7 +9,7 @@ const BtnPositive = ({
     width = defaultProps.width,
     height = defaultProps.height,
     isClicked = false,
-    ...rest // 나머지 SVG 속성
+    ...rest 
 }) => {
     const selectedStyle = isClicked ? {
         stroke: '#FC7E2A', 

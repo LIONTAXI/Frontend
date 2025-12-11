@@ -9,7 +9,7 @@ const BtnNegetive = ({
     width = defaultProps.width,
     height = defaultProps.height,
     isClicked = false,
-    ...rest // 나머지 SVG 속성
+    ...rest 
 }) => {
     const selectedStyle = isClicked ? {
         stroke: 'rgb(119 119 119)', 
