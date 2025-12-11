@@ -17,7 +17,7 @@ import {
   getJoinRequests,
   getCurrentUsers, // /api/map 호출
 } from "../api/taxi";
-import { getTaxiPartyInfo } from "../api/chat";
+import { getTaxiPartyInfo, enterOrCreateChatRoom } from "../api/chat";
 
 export default function TaxiDetailScreen() {
   const navigate = useNavigate();
@@ -233,31 +233,24 @@ export default function TaxiDetailScreen() {
       if (!partyId) return;
 
       try {
-        // 채팅방 정보 조회해서 chatRoomId 확보
-        const info = await getTaxiPartyInfo(partyId, USER_ID);
+            const response = await enterOrCreateChatRoom(partyId);
+            const chatRoomId = response.chatRoomId; 
 
-        const chatRoomId =
-          info.chatRoomId != null
-            ? Number(info.chatRoomId)
-            : info.chatRoom?.id != null
-            ? Number(info.chatRoom.id)
-            : null;
+            if (!chatRoomId) {
+                console.error("[TaxiDetailScreen] 채팅방 입장 API에서 chatRoomId를 받지 못했습니다.");
+                alert("채팅방 정보를 불러오는 데 실패했습니다.");
+                return;
+            }
 
-        if (!chatRoomId) {
-          console.warn(
-            "[TaxiDetailScreen] getTaxiPartyInfo 응답에 chatRoomId가 없습니다.",
-            info
-          );
-          return;
+            // 채팅방으로 이동
+            navigate(`/chat/${chatRoomId}/${partyId}`);
+        } catch (err) {
+            console.error(
+                "[TaxiDetailScreen] 채팅방 생성/입장 실패:",
+                err
+            );
+            alert(`채팅방 이동 실패: ${err.message || '서버 오류'}`);
         }
-
-        navigate(`/chat/${chatRoomId}/${partyId}`);
-      } catch (err) {
-        console.error(
-          "[TaxiDetailScreen] 채팅방 정보 조회 실패:",
-          err
-        );
-      }
     }
   };
 
