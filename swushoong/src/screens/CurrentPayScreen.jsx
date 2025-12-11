@@ -270,14 +270,14 @@ export default function CurrentPayScreen() {
                                             w-[88px] h-8 flex items-center justify-center 
                                         `}
                                         style={{ 
-                                            backgroundColor: member.status === 'DONE' ? '#D6D6D6' : '#FC7E2A'
+                                            backgroundColor: member.status === 'DONE' ? '#FC7E2A' : '#D6D6D6'
                                         }}
                                         // 총대가 아니거나, 이미 완료된 경우 버튼 비활성화
                                         disabled={!isHost || member.status === 'DONE'} 
                                     >
                                         <span className="text-body-semibold-14"
-                                            style={{ color: member.status === 'DONE' ? '#444' : '#FFF' }}>
-                                            {member.status === 'DONE' ? '정산 완료' : '정산 완료'}
+                                            style={{ color: member.status === 'DONE' ? '#FFF' : '#444' }}>
+                                            {member.status === 'DONE' ? '정산 완료' : '미정산'}
                                         </span>
                                     </button>
                                 )}

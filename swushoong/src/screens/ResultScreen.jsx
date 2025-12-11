@@ -132,7 +132,7 @@ export default function ResultScreen() {
 
     return (
         <div className="h-full w-full bg-white max-w-[393px] mx-auto font-pretendard flex flex-col"> 
-            <Header title="정산 정보" />
+            <Header title="정산 정보" onBack={() => navigate(-1)} />
 
             {/* 2. 지불한 택시비 및 계좌 정보*/}
             <div className="flex-col flex-grow w-full space-y-4 px-4 pb-8">

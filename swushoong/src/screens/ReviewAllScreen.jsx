@@ -37,6 +37,7 @@ export default function ReviewAllScreen() { 
     const [selectedNegative, setSelectedNegative] = useState([]);
     const [showNegative, setShowNegative] = useState(false);
     const [wouldMeetAgain, setWouldMeetAgain] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // 1. 초기 데이터 로딩: 멤버 목록을 가져와 대상자를 설정
     useEffect(() => {
@@ -114,12 +115,16 @@ export default function ReviewAllScreen() { 
 
     // 등록 버튼 활성화 조건 계산 (API 명세: 긍정 1개 이상, 다시 만날지 여부 선택 필수)
     const isSubmitEnabled = useMemo(() => {
-        return selectedPositive.length > 0 && wouldMeetAgain !== null && targetUser !== null;
-    }, [selectedPositive, wouldMeetAgain, targetUser]);
+        return selectedPositive.length > 0 
+                && wouldMeetAgain !== null 
+                && targetUser !== null
+                && !isSubmitting;
+    }, [selectedPositive, wouldMeetAgain, targetUser, isSubmitting]);
     
     // ------------------- API 연동 및 데이터 변환 로직 -------------------
     const handleSubmit = async () => {
         if (!isSubmitEnabled || !targetUser) return;
+        setIsSubmitting(true);
 
         // ❌ 채팅방 이동 로직과 chatRoomId 유효성 검사를 제거합니다.
         /*
@@ -151,14 +156,19 @@ export default function ReviewAllScreen() { 
             const reviewId = await postReview(reviewPayload); // ✅ 후기 작성 API 호출 유지
             console.log("✅ 후기 작성 성공. Review ID:", reviewId);
             alert(`${targetUser.name}님에게 후기 작성이 완료되었습니다.`);
+
+            setSelectedPositive([]); 
+        setSelectedNegative([]);
+        setWouldMeetAgain(null);
             
             // ✅ 후기 작성 완료 후, 멤버 목록으로 돌아가도록 수정
-            navigate(-1); 
+            //navigate(-1); 
 
         } catch (error) {
             console.error("❌ 후기 작성 실패:", error);
             alert(`후기 작성 실패: ${error.message}`);
-        }
+        } finally {
+                setIsSubmitting(false);}
     };
     // -----------------------------------------------------------------
 
@@ -315,16 +325,19 @@ export default function ReviewAllScreen() { 
                 <div className="mt-4">
                     <button 
                         onClick={handleSubmit} // API 호출 함수 연결
-                        disabled={!isSubmitEnabled}
+                        disabled={!isSubmitEnabled || isSubmitting}
                         className={`
-                            w-full h-12 px-4 rounded-lg body-semibold-16 transition-all duration-300
-                            ${isSubmitEnabled 
-                                ? 'bg-[#FC7E2A] text-white' 
-                                : 'bg-black-20 text-black-70 cursor-not-allowed' 
-                            }
-                        `}
+        w-full h-12 px-4 rounded-lg transition-all duration-300 
+        text-base font-semibold
+        ${isSubmitting
+            ? 'bg-black-20 text-black-70 cursor-wait'
+            : isSubmitEnabled
+                ? 'bg-[#FC7E2A] text-white'
+                : 'bg-black-20 text-black-70 cursor-not-allowed'
+        }
+    `}
                     >
-                        등록
+                        {isSubmitting ? '등록 중..' : '등록'}
                     </button>
                 </div>
             </div>
