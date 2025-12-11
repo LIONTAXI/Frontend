@@ -1,17 +1,10 @@
-// src/api/my.js
-
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://swushoong.click";
-
-/* =========================
- *  공통 유틸
- * ========================= */
 
 // 공통 헤더 생성
 function buildHeaders(options = {}) {
   const isFormData = options.body instanceof FormData;
 
-  // 로그인 시 저장된 토큰 읽기
   const token =
     localStorage.getItem("accessToken") || localStorage.getItem("token");
 
@@ -34,7 +27,7 @@ function buildHeaders(options = {}) {
 // 공통 요청 유틸
 async function apiRequest(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  console.log("[myApi] 요청:", url, options);
+  console.log("요청:", url, options);
 
   let res;
   try {
@@ -43,7 +36,7 @@ async function apiRequest(path, options = {}) {
       headers: buildHeaders(options),
     });
   } catch (err) {
-    console.error("[myApi] 네트워크 에러:", err);
+    console.error("네트워크 에러:", err);
     throw err;
   }
 
@@ -51,10 +44,10 @@ async function apiRequest(path, options = {}) {
   try {
     data = await res.json();
   } catch {
-    console.log("[myApi] JSON 파싱 실패 (body 없을 수 있음)");
+    console.log("JSON 파싱 실패");
   }
 
-  console.log("[myApi] 응답 status:", res.status, data);
+  console.log("status:", res.status, data);
 
   const isError = !res.ok || data.success === false;
   if (isError) {
@@ -67,10 +60,7 @@ async function apiRequest(path, options = {}) {
   return data;
 }
 
-/* =========================
- *  마이페이지 / 프로필
- * ========================= */
-
+// 마이페이지 / 프로필
 const MY_INFO_URI = "/api/users/info";
 
 export async function getMyInfo() {
@@ -96,10 +86,7 @@ export function uploadProfileImage(file) {
   });
 }
 
-/* =========================
- *  차단 관련
- * ========================= */
-
+// 차단 관련
 const BLOCKS_URI = "/api/blocks";
 
 // 차단하기
@@ -119,8 +106,7 @@ export function getBlockedUsers() {
   });
 }
 
-// ✅ 차단 해제
-//  요청 스펙: { "blockerId": 1, "blockedId": 2 }
+// 차단 해제
 export function unblockUser(blockerId, blockedId) {
   const payload = { blockerId, blockedId };
 
@@ -130,10 +116,7 @@ export function unblockUser(blockerId, blockedId) {
   });
 }
 
-/* =========================
- *  리뷰 요약 프로필 정보
- * ========================= */
-
+// 리뷰 요약 프로필 정보
 const REVIEW_PROFILE_URI = "/api/reviews/profile";
 
 export function getProfileReviewSummary(userId) {
@@ -147,10 +130,7 @@ export function getProfileReviewSummary(userId) {
   });
 }
 
-/* =========================
- *  보호된 프로필 이미지 blob URL 헬퍼
- * ========================= */
-
+// 보호된 프로필 이미지 blob URL 헬퍼
 export async function fetchProfileImageWithAuth(imgPath) {
   if (!imgPath) return null;
 
@@ -174,12 +154,12 @@ export async function fetchProfileImageWithAuth(imgPath) {
   try {
     res = await fetch(url, { method: "GET", headers });
   } catch (err) {
-    console.error("[myApi] 프로필 이미지 blob 요청 네트워크 에러:", err);
+    console.error("프로필 이미지 blob 요청 네트워크 에러:", err);
     return null;
   }
 
   if (!res.ok) {
-    console.error("[myApi] 프로필 이미지 blob 요청 실패:", res.status);
+    console.error("프로필 이미지 blob 요청 실패:", res.status);
     return null;
   }
 
@@ -187,7 +167,7 @@ export async function fetchProfileImageWithAuth(imgPath) {
     const blob = await res.blob();
     return URL.createObjectURL(blob);
   } catch (err) {
-    console.error("[myApi] 프로필 이미지 blob 변환 실패:", err);
+    console.error("프로필 이미지 blob 변환 실패:", err);
     return null;
   }
 }

@@ -1,10 +1,9 @@
-// src/components/MapPicker.jsx
 import React from "react";
 
 export default function MapPicker({
   emoji = "👤",
-  type = "user",      // 'user' | 'host'
-  selected = false,   // 선택된 총대 픽커일 때 true
+  type = "user",     
+  selected = false,  
 }) {
   const isHost = type === "host";
 
@@ -18,10 +17,9 @@ export default function MapPicker({
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    // 👉 색/테두리 규칙
-    backgroundColor: isHost ? "#444444" : "#FFFFFF", // 총대 = 회색, 일반 = 흰색
+    backgroundColor: isHost ? "#444444" : "#FFFFFF", 
     border: selected
-      ? "4px solid #FC7E2A"         // 선택된 총대
+      ? "4px solid #FC7E2A"        
       : isHost
       ? "none"                      // 일반 총대
       : "1px solid #D6D6D6",        // 일반 사용자

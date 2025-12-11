@@ -1,4 +1,3 @@
-// src/components/TabBar.jsx
 import React from "react";
 
 import HomeActiv from "../assets/icon/HomeActiv.svg";
@@ -9,8 +8,8 @@ import MypageActiv from "../assets/icon/MypageActiv.svg";
 import MypageNone from "../assets/icon/MyPageNone.svg";
 
 export default function TabBar({
-  active = "home",            // "home" | "chat-list" | "my"
-  onChange = () => {},        // (key) => void
+  active = "home",           
+  onChange = () => {},        
   className = "",
 }) {
   const tabs = [
@@ -21,7 +20,7 @@ export default function TabBar({
       inactiveIcon: HomeNone,
     },
     {
-      key: "chat-list", // ✅ 경로에 맞게, chat -> chat-list로 수정 
+      key: "chat-list", 
       label: "채팅",
       activeIcon: ChatActiv,
       inactiveIcon: ChatNone,

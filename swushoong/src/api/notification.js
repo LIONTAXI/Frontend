@@ -1,22 +1,18 @@
-// src/api/notification.js
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://swushoong.click";
 
 function buildHeaders(options = {}) {
   const isFormData = options.body instanceof FormData;
 
-  // 로그인 시 저장된 토큰 읽기
   const token =
     localStorage.getItem("accessToken") || localStorage.getItem("token");
 
-  // 기본 헤더
   const headers = isFormData
     ? {}
     : {
         "Content-Type": "application/json",
       };
 
-  // 토큰이 실제 값일 때만 Authorization 추가
   if (token && token !== "null" && token !== "undefined") {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -29,17 +25,17 @@ function buildHeaders(options = {}) {
 
 async function apiRequest(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  console.log("[notificationApi] 요청:", url, options);
+  console.log("요청:", url, options);
 
   let res;
   try {
     res = await fetch(url, {
       ...options,
       headers: buildHeaders(options),
-      credentials: "include", // 서버에서 세션/쿠키 쓰는 경우 대비
+      credentials: "include", 
     });
   } catch (err) {
-    console.error("[notificationApi] 네트워크 에러:", err);
+    console.error("네트워크 에러:", err);
     throw err;
   }
 
@@ -47,10 +43,8 @@ async function apiRequest(path, options = {}) {
   try {
     data = await res.json();
   } catch {
-    console.log("[notificationApi] 응답 본문 없음");
+    console.log("응답 본문 없음");
   }
-
-  console.log("[notificationApi] 응답 status:", res.status, data);
 
   if (!res.ok) {
     const error = new Error(
@@ -77,7 +71,6 @@ export async function getNotifications(userId, { page = 0, size = 20 } = {}) {
   const URI = `/api/notifications?${params.toString()}`;
   const data = await apiRequest(URI, { method: "GET" });
 
-  // 스프링 Page 형태 가정
   if (Array.isArray(data)) return data;
   if (Array.isArray(data.content)) return data.content;
   return [];
@@ -105,14 +98,13 @@ export function connectNotificationStream(userId) {
   params.set("userId", String(userId));
 
   const url = `${BASE_URL}/api/notifications/stream?${params.toString()}`;
-  console.log("[notificationApi] SSE connect:", url);
+  console.log("SSE connect:", url);
 
   if (typeof window === "undefined" || !window.EventSource) {
-    console.warn("[notificationApi] EventSource를 지원하지 않는 환경입니다.");
+    console.warn("EventSource를 지원하지 않는 환경입니다.");
     return null;
   }
 
-  // 쿠키 기반 인증 대비
   const eventSource = new EventSource(url, { withCredentials: true });
   return eventSource;
 }

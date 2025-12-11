@@ -2,18 +2,15 @@ import React from "react";
 
 const MailModal = ({ reason, onConfirm, onCancel }) => {
     return (
-        // 배경
         <div className="fixed inset-0 bg-black bg-opacity-0 flex items-center justify-center z-50
         absolute inset-0 z-50 flex justify-center items-end bg-black-90/70">
             <div className="bg-white p-4 pt-8 w-[320px] rounded-lg shadow-2xl text-center">
                 
-                {/* 제목 및 사유 */}
                 <h3 className="text-head-bold-20 text-black-90 mb-2">메일을 전송할까요?</h3>
                 <p className="text-body-regular-16 text-black-90 mb-8">
                     반려사유: {reason}
                 </p>
                 
-                {/* 버튼 영역 */}
                 <div className="flex justify-between space-x-2">
                     <button 
                         onClick={onCancel} 

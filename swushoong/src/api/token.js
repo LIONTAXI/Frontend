@@ -1,5 +1,3 @@
-// src/api/token.js
-//const TOKEN_KEY = "authToken";
 const TOKEN_KEY = "token";
 
 export function setAuthToken(token) {
@@ -20,21 +18,16 @@ export function getAuthToken() {
   }
 }
 
-/**
- * @returns {number | null} 실제 사용자 ID 또는 null
- */
 export function getCurrentUserId() {
     const token = getAuthToken();
     if (!token) return null;
 
     try {
-        // JWT는 "헤더.페이로드.서명" 구조. 페이로드만 추출
         const parts = token.split('.');
         if (parts.length !== 3) {
             throw new Error("토큰 형식이 올바르지 않습니다.");
         }
 
-        // Base64URL 디코딩 (atob는 Base64 디코딩을 수행)
         const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -45,14 +38,12 @@ export function getCurrentUserId() {
         const userId = decoded.userId;
 
         if (!userId) {
-            console.error("JWT 페이로드에 'userId' 필드가 없습니다.");
+            console.error("userId 필드가 없습니다.");
             return null;
         }
-
-        // 숫자형 ID로 변환하여 반환
         return parseInt(userId, 10); 
+
     } catch (error) {
-        console.error("JWT 수동 디코딩 또는 파싱 실패:", error);
-        return null;
+         return null;
     }
 }
