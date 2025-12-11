@@ -1,4 +1,4 @@
-// src/pages/ChatScreen.jsx
+//src/pages/ChatScreen.jsx
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
@@ -124,7 +124,7 @@ export default function ChatScreen() {
             setMatchStatus('ended');
             setIsSettlementEntered(true);
 
-            // 동승자의 경우, 정산 ID 재확인 로직 (기존 코드 유지)
+            /* 동승자의 경우, 정산 ID 재확인 로직 (기존 코드 유지)
             if (!isHost) {
                 console.log("--- 동승자: STOMP 수신 직후 getCurrentSettlementId 재확인 ---");
                 try {
@@ -137,7 +137,7 @@ export default function ChatScreen() {
                 } catch (error) {
                     console.error("❌ 실패: getCurrentSettlementId 호출 시 에러 발생!", error.message, error);
                 }
-            }
+            }*/
             
             const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
             setMessages(prev => {
@@ -203,15 +203,27 @@ export default function ChatScreen() {
 
         // 필터링: sentAt 또는 content가 누락된 메시지 무시
         if (!data.sentAt || !data.content) {
-            console.warn("⚠️ STOMP 메시지 필터링: sentAt 또는 content가 누락된 메시지 무시", data);
-            return; 
-        }
+    // 💡 수정: system-connect 메시지 처리 로직 추가
+    if (data.type && data.type.startsWith('system-')) {
+        console.log("ℹ️ STOMP 시스템 메시지 수신:", data);
+        // 이 메시지를 UI에 추가하려면 ChatBubble의 system 타입으로 포맷팅하여 추가해야 함
+        // 여기서는 필터링 로그만 남기고 무시하는 것이 일반적이지만, 
+        // 경고를 없애려면 여기에 SYSTEM 타입 메시지 처리 로직을 추가해야 합니다.
+        if(data.type === 'system-connect') {
+             console.log("✅ STOMP 연결 성공 시스템 메시지 수신 및 무시.");
+             return;
+        }
+    }
+    
+    console.warn("⚠️ STOMP 메시지 필터링: sentAt 또는 content가 누락된 메시지 무시", data);
+    return; 
+}
         
         // 일반 메시지 (TEXT/IMAGE) 처리
         const receivedMessage = formatMessage(data);
 
         setMessages((prev) => [...prev, receivedMessage]);
-    }, [currentUserId, isHost]); // currentUserId가 변경될 때마다 재생성
+    }, [currentUserId]); // currentUserId가 변경될 때마다 재생성
 
 
     // 스크롤을 항상 가장 아래로 이동시키는 함수
@@ -257,8 +269,10 @@ export default function ChatScreen() {
                 setIsHost(partyInfo.hostId === currentUserId);
                 setMatchInfo(partyInfo);
 
+                let initialMatchStatus = 'active';
+
                 if (partyInfo.status === 'ENDED' || partyInfo.status === 'FINISHED' || partyInfo.isCompleted) {
-                    setMatchStatus('ended');
+                    initialMatchStatus = 'ended';
                     console.log("🔎 채팅방 로드 시 매칭 상태 확인: ENDED");
                 }
 
@@ -266,10 +280,18 @@ export default function ChatScreen() {
                 const settlementStatus = await getCurrentSettlementId(partyId);
                 if (settlementStatus.hasSettlement && settlementStatus.settlementId) {
                     setIsSettlementEntered(true);
+
+                    initialMatchStatus = 'ended';
+                    if (settlementStatus.isSettled) { // API 응답에 isSettled 필드가 있다고 가정
+                        setIsSettled(true);
+                    }
+
                     console.log("✅ 채팅방 로드 시 정산 정보 입력 상태 확인: TRUE");
                 } else {
                     setIsSettlementEntered(false);
                 }
+
+                setMatchStatus(initialMatchStatus);
 
                 // 채팅 기록 로드
                 const historyData = await getChatHistory(chatRoomId);
@@ -286,8 +308,8 @@ export default function ChatScreen() {
                 alert(`채팅방 로드 실패: ${error.response?.message || '서버 오류'}`);   
             } finally {
                 setIsLoading(false);
-            isConnectingRef.current = false; // 연결 시도 완료
-            console.log("✅ STOMP 연결 시도 완료");
+                isConnectingRef.current = false; // 연결 시도 완료
+                console.log("✅ STOMP 연결 시도 완료");
             }
         };
 
@@ -301,7 +323,7 @@ export default function ChatScreen() {
             stompClientRef.current.deactivate();
         }
     };
-    }, [chatRoomId, partyId, currentUserId, handleStompMessage]);
+    }, [chatRoomId, partyId, currentUserId ]);
 
 
     // 정산 완료 상태를 확인하고 처리하는 useEffect (location state 기반)
@@ -350,6 +372,19 @@ export default function ChatScreen() {
 
     return () => clearTimeout(timer);
 }, [messages]);
+
+const handleBack = () => {
+    // 1. 호스트이고, 매칭이 종료되었으며, 정산이 완료된 상태인지 확인
+    // isSettled 상태는 모든 정산 과정(정산 정보 입력 및 모든 멤버 정산 완료)이 끝났음을 나타냄
+    if (isHost && isSettled) {
+        console.log("✅ 정산 완료 후: 채팅방 목록으로 직접 이동");
+        navigate('/chat-list');
+    } else {
+        // 2. 그 외 모든 일반적인 상황에서는 이전 페이지로 이동
+        console.log("ℹ️ 일반 뒤로가기: 이전 페이지로 이동");
+        navigate('/chat-list');
+    }
+};
 
 
     // ------------------------------------------------------------------
@@ -550,7 +585,7 @@ export default function ChatScreen() {
         <div className={`${isMenuOpen ? 'overflow-hidden' : 'overflow-y-auto'} relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col`}>
             <Header 
                 title="택시팟 채팅" 
-                onBack={() => navigate(-1)} 
+                onBack={handleBack}
                 rightIcon={MenuIcon} 
                 onRightClick={() => setIsMenuOpen(true)}
             />

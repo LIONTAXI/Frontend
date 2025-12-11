@@ -112,8 +112,8 @@ export default function CurrentPayScreen() {
         } catch (err) {
             const errorMessage = err.response?.message || "정산 조르기에 실패했습니다.";
             console.error("❌ 정산 조르기 실패:", errorMessage, err);
-            alert(`정산 조르기에 실패했습니다: ${errorMessage}`);
-            setIsDisabled(false); // 실패 시 버튼 재활성화
+            //alert(`정산 조르기에 실패했습니다: ${errorMessage}`);
+            setIsDisabled(true); // 실패 시 버튼 재활성화
         }
     };
     
@@ -186,7 +186,7 @@ export default function CurrentPayScreen() {
         } else {
             // 필수 정보가 없으면 이전 화면으로 돌아가거나 홈으로 이동
             console.warn("채팅방 ID 또는 파티 ID가 없어 이전 채팅방으로 이동할 수 없습니다. 직전 페이지로 돌아갑니다.");
-            navigate('/'); 
+            navigate(-1); 
         }
     };
 
