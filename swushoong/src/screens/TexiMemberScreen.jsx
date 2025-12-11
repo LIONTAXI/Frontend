@@ -106,11 +106,13 @@ export default function TaxiMemberScreen({chatRoomId}) {
         // /review-all/:taxiPartyId/:revieweeId 로 이동
         // 강퇴는 본인 제외이므로 isMe 체크는 불필요하지만, 안전을 위해 추가
         if (!member.isMe) {
-            console.log("--- 총대 후기 작성 시도 ---");
+            console.log("--- 동승자 후기 작성 시도 ---");
             console.log(`Prop으로 받은 chatRoomId: ${chatRoomId}`);
-            // member.userId는 후기 대상 (revieweeId)
-            navigate(`/review-all/${taxiPartyId}/${member.userId}`);
-        }
+            navigate(`/review-all/${taxiPartyId}/${member.userId}`, {
+                // ✅ chatRoomId와 partyId를 state로 전달
+                state: { chatRoomId: chatRoomId, partyId: taxiPartyId } 
+            });
+        }
     };
 
     const handleProfileClick = (memberId) => {
