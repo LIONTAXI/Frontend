@@ -26,8 +26,7 @@ export default function LoginScreen() {
   const navigate = useNavigate();
 
   // 로그인 버튼 활성화(둘 다 비어 있지 않을 경우)
-  const canLogin =
-    userId.trim().length > 0 && password.trim().length > 0;
+  const canLogin = userId.trim().length > 0 && password.trim().length > 0;
 
   // 서울여대 웹메일 연결
   const handleMailPlugClick = () => {
@@ -37,29 +36,43 @@ export default function LoginScreen() {
     );
   };
 
-  // API 사용
+  // 로그인 처리
   const handleLogin = async () => {
-  if (!canLogin) return;
+    if (!canLogin) return;
 
-  const email = `${userId.trim()}@swu.ac.kr`;
+    const email = `${userId.trim()}@swu.ac.kr`;
 
-  try {
-    setLoginError(false);
+    try {
+      setLoginError(false);
 
-    const data = await login(email, password);
+      const data = await login(email, password);
 
-/*
-      const token = data.token || data.accessToken; 
-      
-      if (token) {
-          setAuthToken(token); // 로컬 스토리지에 토큰 저장
-          console.log("로그인 성공 및 토큰 저장 완료.");
-      } else {
-          // 토큰이 없으면 오류 처리
-          throw new Error("서버 응답에 인증 토큰이 포함되어 있지 않습니다.");
+      // 1) 서버에서 토큰 꺼내기
+      const token = data.token || data.accessToken;
+      if (!token) {
+        throw new Error("서버 응답에 인증 토큰이 포함되어 있지 않습니다.");
       }
-      
 
+      // 2) 토큰을 공통 유틸 함수로 저장 (키: authToken)
+      setAuthToken(token);
+      console.log("[LoginScreen] 토큰 저장 완료");
+
+      // 3) JWT payload에서 userId 꺼내기
+      let loginUserId = null;
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        console.log("[LoginScreen] token payload:", payload);
+        loginUserId = payload.userId;
+      } catch (e) {
+        console.error("JWT 페이로드 파싱 실패:", e);
+      }
+
+      // 4) userId 따로 저장 (다른 화면에서 사용)
+      if (loginUserId != null) {
+        localStorage.setItem("userId", String(loginUserId));
+      }
+
+      // 5) 홈 화면으로 이동
       navigate("/home");
     } catch (err) {
       console.error("로그인 실패:", err);
@@ -68,57 +81,22 @@ export default function LoginScreen() {
         err.response?.message ||
           "아이디 또는 비밀번호를 다시 확인해주세요."
       );
-
-*/
-
-
-    // 토큰 꺼내서 payload 디코딩
-    const token = data.token;
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    console.log("[LoginScreen] token payload:", payload);
-
-    const loginUserId = payload.userId;   // ★ 여기!
-
-    // 토큰 / userId 저장
-    if (token) {
-      localStorage.setItem("token", token);
     }
-    if (loginUserId != null) {
-      localStorage.setItem("userId", String(loginUserId));
-    }
-
-    navigate("/home");
-  } catch (err) {
-    console.error("로그인 실패:", err);
-    setLoginError(true);
-    alert(
-      err.response?.message ||
-        "아이디 또는 비밀번호를 다시 확인해주세요."
-    );
-  
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
       <div className="flex-1 flex flex-col px-4 pt-12 pb-4">
         {/* ===== 로고 + 웹메일 안내 ===== */}
         <div className="flex items-start justify-between">
-          <img
-            src={Logo}
-            alt="logo"
-            className="w-[88px] h-[40px]"
-          />
+          <img src={Logo} alt="logo" className="w-[88px] h-[40px]" />
 
           <button
             type="button"
             onClick={handleMailPlugClick}
             className="mt-4"
           >
-            <img
-              src={MailPlug}
-              alt="서울여대 웹메일 안내"
-            />
+            <img src={MailPlug} alt="서울여대 웹메일 안내" />
           </button>
         </div>
 
