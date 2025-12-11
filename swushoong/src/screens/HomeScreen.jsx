@@ -357,7 +357,7 @@ export default function HomeScreen() {
       </div>
 
       {/* ===== 실시간 택시팟 섹션 ===== */}
-      <section className="flex-1 px-4 pt-4 pb-2 overflow-y-auto overflow-x-hidden">
+      <section className="flex-1 px-4 pt-4 pb-2 overflow-y-auto overflow-x-hidden no-scrollbar">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[20px] font-semibold text-black-90">
             실시간 택시팟
