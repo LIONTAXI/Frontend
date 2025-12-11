@@ -1,9 +1,29 @@
-// src/screens/BlockScreen.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import ProfileImg from "../assets/img/profileIMG.svg";
 import { getBlockedUsers, unblockUser } from "../api/my";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "https://swushoong.click";
+
+/**
+ * 서버에서 온 프로필 이미지 URL을 실제 <img src>로 쓸 수 있게 정리
+ * - null/undefined/빈 문자열 → 기본 이미지
+ * - http/https 로 시작하면 그대로 사용
+ * - 그 외(상대 경로 등) → BASE_URL + 경로
+ */
+function buildProfileImageSrc(rawUrl) {
+  if (!rawUrl) return ProfileImg;
+  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+    return rawUrl;
+  }
+  // 앞에 슬래시 중복 방지
+  if (rawUrl.startsWith("/")) {
+    return `${API_BASE_URL}${rawUrl}`;
+  }
+  return `${API_BASE_URL}/${rawUrl}`;
+}
 
 export default function BlockScreen() {
   const navigate = useNavigate();
@@ -85,9 +105,14 @@ export default function BlockScreen() {
                 {/* 프로필 + 이름 */}
                 <div className="flex items-center gap-[9px]">
                   <img
-                    src={user.imgUrl || ProfileImg}
+                    src={buildProfileImageSrc(user.imgUrl)}
                     alt={user.name}
                     className="w-11 h-11 rounded-full border border-[#D6D6D6] bg-[#D6D6D6] object-cover"
+                    onError={(e) => {
+                      // 이미지 로드 실패 시 기본 이미지로 교체
+                      e.currentTarget.src = ProfileImg;
+                      e.currentTarget.onerror = null;
+                    }}
                   />
                   <span className="text-[16px] font-semibold text-[#444444]">
                     {user.name}
