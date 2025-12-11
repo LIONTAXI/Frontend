@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react"; // ★ useRef 추가
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import TaxiPotCard from "../components/TaxiPotCard";
@@ -32,7 +32,7 @@ export default function HomeScreen() {
 
   // 택시팟 목록
   const [taxiPots, setTaxiPots] = useState([]);
-  const [selectedPotId, setSelectedPotId] = useState(null);
+  const [selectedPotId, setSelectedPotId] = useState(null); // ★ 기본값 그대로(초기 선택 없음)
 
   // 지도에 찍을 총대 마커
   const [hostMarkers, setHostMarkers] = useState([]);
@@ -40,6 +40,10 @@ export default function HomeScreen() {
   // 로그인 유저 id (총대 여부 판별용)
   const rawUserId = localStorage.getItem("userId");
   const USER_ID = rawUserId ? Number(rawUserId) : null;
+
+  // ★ 선택된 카드로 스크롤하기 위한 ref들
+  const listContainerRef = useRef(null);
+  const cardRefs = useRef({}); // pot.id -> HTMLElement
 
   /* ======================
    *  0) 미확인 알림 개수 조회
@@ -231,14 +235,12 @@ export default function HomeScreen() {
         setTaxiPots(mappedPots);
         setHostMarkers(markers);
 
-        // 초기 선택: 마커가 있으면 그 중 첫 번째, 없으면 첫 번째 택시팟
-        if (markers.length > 0) {
-          setSelectedPotId(markers[0].id);
-        } else if (mappedPots.length > 0) {
-          setSelectedPotId(mappedPots[0].id);
-        } else {
-          setSelectedPotId(null);
-        }
+        // ★ 초기 자동 선택을 없앱니다 (요청사항)
+        // 이전 코드:
+        // if (markers.length > 0) setSelectedPotId(markers[0].id);
+        // else if (mappedPots.length > 0) setSelectedPotId(mappedPots[0].id);
+        // else setSelectedPotId(null);
+        setSelectedPotId(null);
       } catch (err) {
         console.error(
           "[HomeScreen] 택시팟 목록 / 현재 접속 유저 조회 실패:",
@@ -249,6 +251,22 @@ export default function HomeScreen() {
 
     fetchData();
   }, [USER_ID]);
+
+  /* ======================
+   *  2-1) 선택된 카드로 스크롤
+   * ====================== */
+  useEffect(() => {
+    if (!selectedPotId) return;
+    const el = cardRefs.current[selectedPotId];
+    if (el && typeof el.scrollIntoView === "function") {
+      // compact(가로 스크롤) / expanded(세로 스크롤) 모두 대응
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [selectedPotId, viewMode]);
 
   /* ======================
    *  3) UI 핸들러들
@@ -266,8 +284,7 @@ export default function HomeScreen() {
   };
 
   const handleClickCard = (pot) => {
-    setSelectedPotId(pot.id);
-
+    // ★ 카드 클릭 시 더 이상 선택 상태를 변경하지 않습니다 (요청사항)
     const isOwner = typeof pot.isOwner === "boolean" ? pot.isOwner : false;
 
     navigate("/taxi-detail", {
@@ -282,7 +299,8 @@ export default function HomeScreen() {
   const isHostMe = taxiPots.some((pot) => pot.isOwner === true);
 
   const handleSelectTaxiPotFromMap = (partyId) => {
-    setSelectedPotId(partyId);
+    // ★ 같은 마커 재클릭 시 선택 해제(토글)
+    setSelectedPotId((prev) => (prev === partyId ? null : partyId));
   };
 
   const handleTabChange = (key) => {
@@ -332,7 +350,7 @@ export default function HomeScreen() {
           userLocation={userLocation}
           taxiHosts={hostMarkers}
           selectedTaxiPotId={selectedPotId}
-          onSelectTaxiPot={handleSelectTaxiPotFromMap}
+          onSelectTaxiPot={handleSelectTaxiPotFromMap} // ★ 토글 선택
           onAddressChange={setStationLabel}
           isHostMe={isHostMe}
         />
@@ -358,6 +376,7 @@ export default function HomeScreen() {
         </div>
 
         <div
+          ref={listContainerRef} // ★ 스크롤 컨테이너 ref
           className={
             viewMode === "compact"
               ? "flex flex-row gap-2 overflow-x-auto pb-1 no-scrollbar"
@@ -365,20 +384,27 @@ export default function HomeScreen() {
           }
         >
           {taxiPots.map((pot) => (
-            <TaxiPotCard
+            <div
               key={pot.id}
-              destination={pot.destination}
-              exitInfo={pot.exitInfo}
-              deadline={pot.deadline}
-              currentCount={pot.currentCount}
-              maxCount={pot.maxCount}
-              price={pot.price}
-              emoji={pot.emoji}
-              highlighted={selectedPotId === pot.id}
-              variant={viewMode === "compact" ? "small" : "big"}
-              fullWidth={viewMode === "expanded"}
-              onClick={() => handleClickCard(pot)}
-            />
+              ref={(el) => {
+                if (el) cardRefs.current[pot.id] = el; // ★ 각 카드 요소 ref 저장
+              }}
+              className={viewMode === "compact" ? "shrink-0" : ""}
+            >
+              <TaxiPotCard
+                destination={pot.destination}
+                exitInfo={pot.exitInfo}
+                deadline={pot.deadline}
+                currentCount={pot.currentCount}
+                maxCount={pot.maxCount}
+                price={pot.price}
+                emoji={pot.emoji}
+                highlighted={selectedPotId === pot.id}
+                variant={viewMode === "compact" ? "small" : "big"}
+                fullWidth={viewMode === "expanded"}
+                onClick={() => handleClickCard(pot)} // ★ 선택 변경 없음, 네비게이션만
+              />
+            </div>
           ))}
         </div>
       </section>
