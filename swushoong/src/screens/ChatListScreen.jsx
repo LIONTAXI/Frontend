@@ -1,5 +1,3 @@
-// src/screens/ChatListScreen.jsx
-// 채팅목록 화면
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
@@ -8,7 +6,6 @@ import { setAuthToken } from "../api/token";
 
 
 const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon, onClick }) => {
-    // UI/CSS 변경 없음: 기존 코드 유지
     const itemClasses = hasUnread
         ? "flex items-center py-3 px-4 bg-[#FFF4DF]" // 읽지 않은 메시지 배경색
         : "flex items-center py-3 px-4 mt-4 mb-4";
@@ -59,7 +56,6 @@ const ChatItem = ({ title, lastMessage, time, isMatching, hasUnread, avatarIcon,
 
 // 날짜 구분
 const DateDivider = ({ date }) => (
-    // UI/CSS 변경 없음: 기존 코드 유지
     <div className="text-body-semibold-16 text-black-70 px-4">
         {date}
     </div>
@@ -73,7 +69,7 @@ export default function ChatListScreen() {
     const [pastChats, setPastChats] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // 탭바 이동 (UI/CSS 변경 없음)
+    // 탭바 이동
     const handleTabChange = (key) => {
         setActiveTab(key);
         console.log(`${key} 탭으로 이동합니다.`);
@@ -86,12 +82,12 @@ export default function ChatListScreen() {
         }
     };
     
-    // 채팅 목록 API 호출 함수 (더미 데이터 사용 로직 제거)
+    // 채팅 목록 API 호출 함수
     const fetchChatRooms = async () => {
         setLoading(true);
 
         try {
-            // 1. API 실제 호출
+            // API 실제 호출
             const data = await getMyChatRooms();
             
             // API 응답 구조에 따라 상태 업데이트
@@ -102,7 +98,7 @@ export default function ChatListScreen() {
 
         } catch (error) {
             console.error("채팅 목록 로드 실패 (API 에러):", error.message);
-            // API 호출 실패 시, 빈 상태로 둡니다.
+            // API 호출 실패 시 빈 상태로
             setMatchingChats([]);
             setPastChats([]);
         } finally {
@@ -110,7 +106,7 @@ export default function ChatListScreen() {
         }
     };
 
-    // 화면 로드 시 토큰 설정 및 데이터 로드 (UI/CSS 변경 없음)
+    // 화면 로드 시 토큰 설정 및 데이터 로드
     useEffect(() => {
         const TEMP_TOKEN = "YOUR_ACTUAL_VALID_JWT_TOKEN_HERE";
         if (TEMP_TOKEN.length > 50) {
@@ -120,7 +116,7 @@ export default function ChatListScreen() {
         fetchChatRooms();
     }, []);
     
-    // 채팅 화면 이동 (API 호출 로직)
+    // 채팅 화면 이동
     const handleChatClick = async (chat) => {
         try {
             const taxiPartyId = chat.taxiPartyId || chat.id;
@@ -139,7 +135,7 @@ export default function ChatListScreen() {
         }
     };
     
-    // 날짜별로 지난 채팅 목록을 그룹화 (UI/CSS 변경 없음)
+    // 날짜별로 지난 채팅 목록을 그룹화 
     const groupedPastChats = pastChats.reduce((acc, chat) => {
         let date = '날짜 미정';
         if (chat.lastMessageAt) {
@@ -147,7 +143,6 @@ export default function ChatListScreen() {
                 const dateObj = new Date(chat.lastMessageAt);
                 date = `${dateObj.getFullYear()}.${(dateObj.getMonth() + 1).toString().padStart(2, '0')}.${dateObj.getDate().toString().padStart(2, '0')}`;
             } catch (e) {
-                // 날짜 파싱 실패 시 처리
             }
         }
         
@@ -158,7 +153,7 @@ export default function ChatListScreen() {
         return acc;
     }, {});
     
-    // 로딩 상태 표시 (UI/CSS 변경 없음)
+    // 로딩 상태 표시
     if (loading) {
         return (
             <div className="h-full bg-white font-pretendard flex flex-col">
@@ -174,7 +169,6 @@ export default function ChatListScreen() {
     }
 
     return (
-        // UI/CSS 변경 없음: 기존 코드 유지
         <div className="h-full w-[393px] h-screen bg-white font-pretendard flex flex-col">
             {/* 헤더 영역 */}
             <header className="py-8 px-4">
@@ -193,7 +187,6 @@ export default function ChatListScreen() {
                 )}
 
                 {/* 현재 매칭 중인 택시팟 섹션 */}
-                {/*{matchingChats.length > 0 && (*/}
                     <section className="mt-0 mb-14">
                         <h2 className="text-head-semibold-20 text-[#000] px-4 py-2">지금 매칭중인 택시팟</h2>
                         <div>

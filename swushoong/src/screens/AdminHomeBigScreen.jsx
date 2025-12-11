@@ -2,11 +2,11 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoAdmin from "../assets/img/img_logo_admin.svg";
 import IconSmall from "../assets/icon/icon_small.svg"; 
-import MailModal from "../components/MainModal"; // 메일 전송 모달 컴포넌트 
-import RequestItem from "../components/RequestItem"; // 수신 목록 컴포넌트 
+import MailModal from "../components/MainModal"; 
+import RequestItem from "../components/RequestItem"; 
 import SvgArrowLeft from "../components/svg_arrowLeft";
 import SvgArrowRight from "../components/svg_arrowRight";
-import Example from "../assets/img/img_student.svg"; // 임시 학생증 정보 
+import Example from "../assets/img/img_student.svg"; 
 import * as API from "../api/Admin";
 
 // IconToggle 컴포넌트 
@@ -79,12 +79,7 @@ const AdminAuthImage = ({ authId, fallbackSrc }) => {
     );
 };
 
-
-// ⭐ 테스트 시: true로 설정
-// ⭐ 실제 서비스 시: false로 변경하여 API 호출
 const USE_DUMMY_DATA = false; 
-// ----------------------------------------------------
-
 
 export default function AdminHomeBigScreen() {
     const navigate = useNavigate();
@@ -120,7 +115,7 @@ export default function AdminHomeBigScreen() {
     useEffect(() => {
         const fetchRejectionReasons = async () => {
             if (USE_DUMMY_DATA) {
-                 // ⭐ [더미 데이터 코드]
+                 // 더미 데이터 코드
                 setRejectReasons([
                     '이미지와 입력 정보 불일치',
                     '이미지 정보 미포함',
@@ -129,7 +124,7 @@ export default function AdminHomeBigScreen() {
                 return;
             }
 
-            // ⭐ [API 연결 코드]
+            // API 연결 코드
             try {
                 const response = await API.getRejectionReasons(); 
                 
@@ -149,12 +144,12 @@ export default function AdminHomeBigScreen() {
         fetchRejectionReasons();
     }, []);
 
-    // API: 요청 목록 조회 (대기 중 또는 완료)
+    // API 요청 목록 조회 (대기 중 또는 완료)
     const fetchData = useCallback(async (tab) => {
         setIsLoading(true);
         setError(null);
         
-        // ⭐ [더미 데이터 코드]
+        // 더미 데이터 코드
         if (USE_DUMMY_DATA) {
             await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 효과 시뮬레이션
             if (tab === 'request') {
@@ -167,7 +162,7 @@ export default function AdminHomeBigScreen() {
             return;
         }
 
-        // ⭐ [API 연결 코드]
+        // API 연결 코드
         try {
             let requestsData = [];
             let response;
@@ -253,7 +248,7 @@ export default function AdminHomeBigScreen() {
 
         try {
             if (USE_DUMMY_DATA) {
-                // ⭐ [더미 데이터 코드]: DUMMY_PENDING_REQUESTS에서 즉시 제거하고 현재 화면에 반영
+                // 더미 데이터 코드: DUMMY_PENDING_REQUESTS에서 즉시 제거하고 현재 화면에 반영
                 const currentIdxInPending = DUMMY_PENDING_REQUESTS.findIndex(req => req.id === currentAuthId);
                 if (currentIdxInPending !== -1) {
                     const rejectedRequest = DUMMY_PENDING_REQUESTS.splice(currentIdxInPending, 1)[0];
@@ -263,29 +258,29 @@ export default function AdminHomeBigScreen() {
                     DUMMY_COMPLETED_REQUESTS.unshift(rejectedRequest);
                 }
                 
-                // ✅ [반려 확인 상태로 변경]: pendingRequests 상태만 업데이트하여 현재 화면에 반려 정보 표시
+                // 반려 확인 상태로 변경: pendingRequests 상태만 업데이트하여 현재 화면에 반려 정보 표시
                 setPendingRequests(prev => prev.map(req =>
                     req.id === currentAuthId
                     ? { 
                         ...req, 
                         rejectionReason: selectedReason, 
-                        rejectionDate: rejectionDate, // ⭐ 여기에 날짜가 들어가야 함
+                        rejectionDate: rejectionDate,
                         isApproved: false 
                     }
                     : req
                 ));
                 
             } else {
-                 // ⭐ [API 연결 코드]
+                 // API 연결 코드
                 await API.rejectAuthRequestByApproveEndpoint(currentAuthId, selectedReason);
                 
-                // ✅ [반려 확인 상태로 변경]: API 모드에서도 현재 요청 상태를 임시 업데이트
+                // 반려 확인 상태로 변경: API 모드에서도 현재 요청 상태를 임시 업데이트
                 setPendingRequests(prev => prev.map(req =>
                     req.id === currentAuthId
                     ? { 
                         ...req, 
                         rejectionReason: selectedReason, 
-                        rejectionDate: rejectionDate, // ⭐ 여기에 날짜가 들어가야 함
+                        rejectionDate: rejectionDate, 
                         isApproved: false 
                     }
                     : req
@@ -293,15 +288,13 @@ export default function AdminHomeBigScreen() {
             }
 
             // 성공 알림
-            // alert(`${currentRequest.name} 님의 요청을 반려 사유: [${selectedReason}]와 함께 메일로 전송했습니다.`);
             setIsModalOpen(false); 
             
-            // ✅ 다음 항목으로 이동하지 않고, resetControlState만 호출하여 반려 토글 닫기
+            // 다음 항목으로 이동하지 않고, resetControlState만 호출하여 반려 토글 닫기
             resetControlState();
 
         } catch (err) {
             console.error("Failed to reject request:", err);
-            //alert(`요청 반려에 실패했습니다: ${err.message}`);
             setIsModalOpen(false);
         }
     };
@@ -336,7 +329,7 @@ export default function AdminHomeBigScreen() {
         
         try {
             if (USE_DUMMY_DATA) {
-                 // ⭐ [더미 데이터 코드]: DUMMY_PENDING_REQUESTS에서 즉시 제거하고 현재 화면에 반영
+                 // 더미 데이터 코드: DUMMY_PENDING_REQUESTS에서 즉시 제거하고 현재 화면에 반영
                 const currentIdxInPending = DUMMY_PENDING_REQUESTS.findIndex(req => req.id === request.id);
                 if (currentIdxInPending !== -1) {
                     const approvedRequest = DUMMY_PENDING_REQUESTS.splice(currentIdxInPending, 1)[0];
@@ -346,7 +339,7 @@ export default function AdminHomeBigScreen() {
                     DUMMY_COMPLETED_REQUESTS.unshift(approvedRequest);
                 }
                 
-                 // ✅ [승인 확인 상태로 변경]: pendingRequests 상태만 업데이트하여 현재 화면에 승인 정보 표시
+                 // 승인 확인 상태로 변경: pendingRequests 상태만 업데이트하여 현재 화면에 승인 정보 표시
                 setPendingRequests(prev => prev.map(req =>
                     req.id === currentAuthId
                     ? { ...req, rejectionReason: null, rejectionDate: null, isApproved: true, approvalDate: approvalDate } // approvalDate 추가
@@ -354,10 +347,10 @@ export default function AdminHomeBigScreen() {
                 ));
                 
             } else {
-                // ⭐ [API 연결 코드]
+                //API 연결 코드
                 await API.approveAuthRequest(request.id);
                 
-                // ✅ [승인 확인 상태로 변경]: API 모드에서도 현재 요청 상태를 임시 업데이트
+                // 승인 확인 상태로 변경: API 모드에서도 현재 요청 상태를 임시 업데이트
                 setPendingRequests(prev => prev.map(req => 
                     req.id === currentAuthId 
                     ? { ...req, rejectionReason: null, rejectionDate: null, isApproved: true }
@@ -368,7 +361,7 @@ export default function AdminHomeBigScreen() {
             // 2. 처리 완료 알림
             alert(`${request.name} 님의 요청을 승인합니다.`);
             
-            // ✅ 다음 항목으로 이동하지 않고, resetControlState만 호출하여 버튼 상태 초기화
+            // 다음 항목으로 이동하지 않고, resetControlState만 호출하여 버튼 상태 초기화
             resetControlState();
 
         } catch (err) {
@@ -390,7 +383,7 @@ export default function AdminHomeBigScreen() {
     const handlePrevRequest = () => {
         if (activeTab === 'complete') return; 
         
-        // ✅ 요청 이동 시, 현재 항목이 처리(반려/승인)된 상태라면 목록을 갱신합니다.
+        // 요청 이동 시, 현재 항목이 처리(반려/승인)된 상태라면 목록 갱신
         if (currentRequest?.rejectionReason || currentRequest?.isApproved) {
             refreshDataAfterAction();
             return; 
@@ -403,7 +396,7 @@ export default function AdminHomeBigScreen() {
     const handleNextRequest = () => {
         if (activeTab === 'complete') return; 
         
-        // ✅ 요청 이동 시, 현재 항목이 처리(반려/승인)된 상태라면 목록을 갱신합니다.
+        // 요청 이동 시, 현재 항목이 처리(반려/승인)된 상태라면 목록 갱신
         if (currentRequest?.rejectionReason || currentRequest?.isApproved) {
             refreshDataAfterAction();
             return;
@@ -420,7 +413,7 @@ export default function AdminHomeBigScreen() {
     const isPrevDisabled = currentIndex === 0;
     const isNextDisabled = currentIndex === currentList.length - 1 || currentList.length === 0;
 
-    // ✅ 현재 요청이 처리되었는지 확인 (반려 사유가 있거나 승인된 경우)
+    // 현재 요청이 처리되었는지 확인 (반려 사유가 있거나 승인된 경우)
     const isProcessed = currentRequest?.rejectionReason || currentRequest?.isApproved;
 
 
@@ -428,14 +421,14 @@ export default function AdminHomeBigScreen() {
     return (
         <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col">
             
-            {/* 1. 헤더 영역 */}
+            {/* 헤더 영역 */}
             <header className="flex items-center p-4 pt-12">
                 <div className="flex items-center">
                     <img src={LogoAdmin} alt="로고" className="w-[147px] h-[58px] absolute left-4"/>
                 </div>
             </header>
 
-            {/* 2. 탭 내비게이션 및 구분선 */}
+            {/* 탭 내비게이션 및 구분선 */}
             <nav className="flex w-full border-b border-black-40 relative mt-5">
                 <div 
                     className="flex-1 text-center py-3 relative cursor-pointer"
@@ -461,7 +454,7 @@ export default function AdminHomeBigScreen() {
                 </div>
             </nav>
 
-            {/* 3. 메인 콘텐츠 영역 (조건부 렌더링) */}
+            {/* 메인 콘텐츠 영역 (조건부 렌더링) */}
             <main className="flex-grow overflow-y-auto p-4 flex flex-col">
 
                 {/* 작게 보기 버튼 (승인 요청 탭에서만 표시) */}
@@ -522,14 +515,14 @@ export default function AdminHomeBigScreen() {
                             <div className="flex mb-1"><span className="flex items-center text-black-40 text-body-semibold-16 mr-1">학번</span><span className="text-black-90 text-body-regular-16">{currentRequest.requesterId}</span></div>
                             <div className="flex"><span className="flex items-center text-black-40 text-body-semibold-16 mr-1">날짜</span><span className="text-black-50 text-body-regular-16">{currentRequest.date}</span></div>
                             
-                            {/* ✅ 반려 사유/날짜 표시 */}
+                            {/* 반려 사유/날짜 표시 */}
                             {currentRequest.rejectionReason && (
                                 <>
                                 <div className="flex mb-2 mt-2 border-t border-black-40"><span className="flex items-center text-black-40 text-body-semibold-16 mr-1 mt-2">반려 사유</span><span className="text-black-90 text-body-regular-16 mt-2">{currentRequest.rejectionReason}</span></div>
                                 <div className="flex"><span className="flex items-center text-black-40 text-body-semibold-16 mr-1">반려 날짜</span><span className="text-black-50 text-body-regular-16">{currentRequest.rejectionDate}</span></div>
                                 </>
                             )}
-                            {/* ✅ 승인 완료된 경우 */}
+                            {/* 승인 완료된 경우 */}
                              {currentRequest.isApproved && !currentRequest.rejectionReason && (
                                 <div className="mt-2 border-t border-black-40 pt-2">
                                     <div className="flex mb-1">
@@ -546,7 +539,7 @@ export default function AdminHomeBigScreen() {
                         </div>
                         
                             <>
-                                {/* ✅ 처리 완료 시 이 버튼 영역 전체를 숨깁니다. */}
+                                {/* 처리 완료 시 이 버튼 영역 전체를 숨김 */}
                                 {!isProcessed && (
                                     <div className="w-[300px] flex justify-between mt-2 space-x-2">
                                         <button 
@@ -571,7 +564,7 @@ export default function AdminHomeBigScreen() {
                                 )}
 
                                 {/* 거절 사유 토글 메뉴  */}
-                                {/* ✅ isProcessed 상태와 관계 없이 isRejecting일 때만 표시됩니다. */}
+                                {/* isProcessed 상태와 관계 없이 isRejecting일 때만 표시 */}
                                 {isRejecting && (
                                     <div className="w-[300px] mt-4">
                                         {/* 토글 헤더 */}

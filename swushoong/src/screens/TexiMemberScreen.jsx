@@ -1,6 +1,3 @@
-//src/screens/TaxiMemberScreen.jsx
-//채팅_택시팟멤버_총대슈니 시점 
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from "../components/Header";
@@ -45,8 +42,6 @@ export default function TaxiMemberScreen({chatRoomId}) {
             }));
 
             processedMembers.sort((a, b) => {
-                // isMe가 true(1)이면 b보다 앞으로 (-1)
-                // isMe가 false(0)이면 b보다 뒤로 (1)
                 return (b.isMe ? 1 : 0) - (a.isMe ? 1 : 0);
             });
 
@@ -65,8 +60,7 @@ export default function TaxiMemberScreen({chatRoomId}) {
     }, [fetchMembers]); // fetchMembers가 변경될 때마다 실행
 
     const handleBackToChat = () => {
-        // navigate(-1)는 브라우저 기록에서 바로 이전 페이지로 돌아갑니다.
-        // 이 경우 'TaxiMemberScreen' 직전 페이지인 'ChatScreen'이 됩니다.
+
         navigate(-1);
     };
 
@@ -103,13 +97,11 @@ export default function TaxiMemberScreen({chatRoomId}) {
         }
 
         // 후기 작성 페이지 경로로 이동
-        // /review-all/:taxiPartyId/:revieweeId 로 이동
-        // 강퇴는 본인 제외이므로 isMe 체크는 불필요하지만, 안전을 위해 추가
         if (!member.isMe) {
             console.log("--- 동승자 후기 작성 시도 ---");
             console.log(`Prop으로 받은 chatRoomId: ${chatRoomId}`);
             navigate(`/review-all/${taxiPartyId}/${member.userId}`, {
-                // ✅ chatRoomId와 partyId를 state로 전달
+                // chatRoomId와 partyId를 state로 전달
                 state: { chatRoomId: chatRoomId, partyId: taxiPartyId } 
             });
         }
@@ -117,9 +109,8 @@ export default function TaxiMemberScreen({chatRoomId}) {
 
     const handleProfileClick = (memberId) => {
         console.log(`총대 시점 프로필 클릭: 사용자 ID ${memberId}`);
-        // /member-profile/:userId 로 이동
         navigate(`/member-profile/${memberId}`, {
-            // ✅ chatRoomId와 partyId를 모두 state로 전달
+            // chatRoomId와 partyId를 모두 state로 전달
             state: { chatRoomId: chatRoomId, partyId: taxiPartyId }
         });
     };
@@ -147,7 +138,7 @@ export default function TaxiMemberScreen({chatRoomId}) {
                 <div className="space-y-4">
                     {members.map((member, index) => (
                         <div key={index} className="flex justify-between items-center">
-                            {/* 왼쪽: 프로필 이미지 (임시 회색 원) + 이름 */}
+                            {/* 왼쪽 프로필 이미지 (임시 회색 원) + 이름 */}
                             <div className="flex items-center gap-2"
                                 onClick={() => handleProfileClick(member.userId)}
                             >

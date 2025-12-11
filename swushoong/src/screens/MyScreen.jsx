@@ -1,4 +1,3 @@
-// src/screens/MyScreen.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
@@ -62,7 +61,7 @@ export default function MyScreen() {
 
     (async () => {
       try {
-        // 1) 내 기본 정보
+        // 내 기본 정보
         const info = await getMyInfo();
 
         const imgFromServer =
@@ -87,7 +86,7 @@ export default function MyScreen() {
       }
 
       try {
-        // 2) 리뷰 요약 정보
+        // 리뷰 요약 정보
         const summary = await getProfileReviewSummary(USER_ID);
 
         setReviewSummary({

@@ -1,5 +1,3 @@
-// 택시팟 멤버 상위 페이지 
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { getCurrentUserId } from '../api/token';
@@ -15,7 +13,7 @@ const LoadingScreen = () => (
 
 const ErrorScreen = ({ message }) => (
     <div className="h-screen flex items-center justify-center text-body-regular-16 text-red-500">
-        ⚠️ 오류: {message}
+        오류: {message}
     </div>
 );
 
@@ -24,7 +22,7 @@ export default function MemberListScreen() {
     const location = useLocation();
     const chatRoomId = location.state?.chatRoomId;
 
-    const [isHost, setIsHost] = useState(null); // null: 로딩 중
+    const [isHost, setIsHost] = useState(null); 
     const currentUserId = getCurrentUserId();
     const partyIdNum = parseInt(partyId, 10);
 
@@ -43,10 +41,10 @@ export default function MemberListScreen() {
 
         const checkRole = async () => {
             try {
-                // 1. 택시팟 상세 정보 API를 호출하여 Host ID를 확인
+                // 택시팟 상세 정보 API를 호출하여 Host ID를 확인
                 const partyInfo = await getTaxiPartyInfo(partyIdNum, currentUserId);
                 
-                // 2. 현재 로그인한 사용자 ID와 Host ID를 비교하여 역할 설정
+                // 현재 로그인한 사용자 ID와 Host ID를 비교하여 역할 설정
                 setIsHost(partyInfo.hostId === currentUserId);
             } catch (error) {
                 console.error("역할 확인 API 실패:", error);

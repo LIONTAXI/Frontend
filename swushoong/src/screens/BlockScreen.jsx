@@ -7,12 +7,6 @@ import { getBlockedUsers, unblockUser } from "../api/my";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://swushoong.click";
 
-/**
- * 서버에서 온 프로필 이미지 URL을 실제 <img src>로 쓸 수 있게 정리
- * - null/undefined/빈 문자열 → 기본 이미지
- * - http/https 로 시작하면 그대로 사용
- * - 그 외(상대 경로 등) → BASE_URL + 경로
- */
 function buildProfileImageSrc(rawUrl) {
   if (!rawUrl) return ProfileImg;
   if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {

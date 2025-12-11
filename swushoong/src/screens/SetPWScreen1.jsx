@@ -1,4 +1,3 @@
-// src/screens/SetPWScreen1.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -21,7 +20,7 @@ export default function JoinScreen1() {
   const [showVerification, setShowVerification] = useState(false);
   const [isCodeFilled, setIsCodeFilled] = useState(false);
 
-  // 인증 코드 값(EmailVerificationSection에서 올려줄 예정)
+  // 인증 코드 값
   const [verificationCode, setVerificationCode] = useState("");
 
   const navigate = useNavigate();
@@ -38,7 +37,6 @@ export default function JoinScreen1() {
 
     try {
       const data = await sendPasswordResetCode(fullEmail);
-      // { success:true, message, email }
       alert(data.message || "인증 코드가 전송되었습니다.");
       setShowVerification(true);
     } catch (err) {
@@ -125,7 +123,7 @@ export default function JoinScreen1() {
           </div>
         </section>
 
-        {/* ⭐ 인증코드 입력 영역 */}
+        {/* 인증코드 입력 영역 */}
         {showVerification && (
           <section className="w-full max-w-[361px] mx-auto mt-8">
             <EmailVerificationSection
@@ -138,7 +136,7 @@ export default function JoinScreen1() {
         )}
       </main>
 
-      {/* ===== 하단 버튼 ===== */}
+      {/* 하단 버튼  */}
       <div className="px-4 pb-6">
         <BtnLong
           label={primaryLabel}

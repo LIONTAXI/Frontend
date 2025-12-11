@@ -26,7 +26,7 @@ const ApprovalCard = ({ authId, name, studentId, onApprove, onRejectDetail }) =>
             }
 
             try {
-                // 8. 인증 요청 이미지 조회 API 호출 (Blob 반환 가정)
+                // 인증 요청 이미지 조회 API 호출 (Blob 반환 가정)
                 const imageBlob = await getAuthRequestImage(authId);
                 
                 if (!(imageBlob instanceof Blob)) {
@@ -126,15 +126,15 @@ export default function AdminHomeScreen() {
         navigate(`/admin-home-big?authId=${authId}`); 
     };
 
-    /*
-     * ✅ 승인 요청 목록 (Request Tab)을 API에서 가져오는 함수 
-     */
+   
+     // 승인 요청 목록 (Request Tab)을 API에서 가져오는 함수 
+    
     const fetchRequests = useCallback(async () => {
         if (activeTab !== 'request') return;
         setIsLoading(true);
         setError(null);
         try {
-            // 2. 관리자 페이지에서 승인 요청 목록 전체 조회 API 호출
+            // 관리자 페이지에서 승인 요청 목록 전체 조회 API 호출
             const data = await getAllAuthRequests();
             setRequests(data); 
         } catch (err) {
@@ -145,15 +145,15 @@ export default function AdminHomeScreen() {
         }
     }, [activeTab]); 
 
-    /**
-     * ✅ 수신 목록 (Complete Tab)을 API에서 가져오는 함수
-     */
+    
+    // 수신 목록 (Complete Tab)을 API에서 가져오는 함수
+   
     const fetchCompletedRequests = useCallback(async () => {
         if (activeTab !== 'complete') return;
         setIsLoading(true);
         setError(null);
         try {
-            // 7. 관리자 페이지에서 수신 목록 조회 API 호출
+            // 관리자 페이지에서 수신 목록 조회 API 호출
             const data = await getCompletedAuthRequests();
             setCompletedRequests(data);
         } catch (err) {
@@ -164,13 +164,13 @@ export default function AdminHomeScreen() {
         }
     }, [activeTab]);
 
-    /**
-     * 개별 승인 요청을 승인 처리하는 함수
-     */
+    
+    // 개별 승인 요청을 승인 처리하는 함수
+ 
     const handleApprove = async (authId) => {
         setIsLoading(true);
         try {
-            // 4. 관리자가 해당 요청 승인 API 호출
+            // 관리자가 해당 요청 승인 API 호출
             await approveAuthRequest(authId);
             alert("승인 처리가 완료되었습니다.");
 
@@ -248,14 +248,14 @@ export default function AdminHomeScreen() {
     return (
         <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto overflow-hidden flex flex-col">
             
-            {/* 1. 헤더 영역 */}
+            {/* 헤더 영역 */}
             <header className="flex items-center p-4 pt-12">
                 <div className="flex items-center">
                     <img src={LogoAdmin} alt="logo" className="w-[147px] h-[58px] absolute left-4"/>
                 </div>
             </header>
 
-            {/* 2. 탭 내비게이션 및 구분선 */}
+            {/* 탭 내비게이션 및 구분선 */}
             <nav className="flex w-full border-b border-black-40 relative mt-5">
                 {/* === 승인 요청 탭 === */}
                 <div 
@@ -286,7 +286,7 @@ export default function AdminHomeScreen() {
                 </div>
             </nav>
 
-            {/* 3. 메인 콘텐츠 영역 (조건부 렌더링) */}
+            {/* 메인 콘텐츠 영역 (조건부 렌더링) */}
             <main className="flex-grow overflow-y-auto p-4 flex flex-col">
 
                 <button 

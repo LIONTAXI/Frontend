@@ -1,4 +1,3 @@
-// src/screens/TaxiDetailScreen.jsx
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -86,15 +85,15 @@ export default function TaxiDetailScreen() {
     chatRoomId: taxiPot?.chatRoomId ?? null,
   });
 
-  /* ======================================
-   *  택시팟 상세 + 호스트 위치/이모지 가져오기
-   * ====================================== */
+
+   // 택시팟 상세 + 호스트 위치/이모지 가져오기
+
   useEffect(() => {
     if (!taxiPotId) return;
 
     async function fetchDetail() {
       try {
-        // 1) 택시팟 상세 + 2) 현재 지도에 표시 가능한 유저들
+        // 택시팟 상세 + 현재 지도에 표시 가능한 유저들
         const [data, mapUsers] = await Promise.all([
           getTaxiPotDetail(taxiPotId),
           getCurrentUsers(),
@@ -111,7 +110,7 @@ export default function TaxiDetailScreen() {
             ? Number(data.hostUserId)
             : null;
 
-        // 🔹 host userId를 state에 저장 → 프로필 보기 버튼에서 사용
+        // host userId를 state에 저장 → 프로필 보기 버튼에서 사용
         setHostUserId(hostId);
 
         // 이 글이 내 글인지 여부
@@ -348,7 +347,7 @@ export default function TaxiDetailScreen() {
                 </span>
               </div>
 
-              {/* 🔹 총대슈니 프로필 보러가기 → ReviewScreen (/member-profile/:userId) */}
+              {/* 총대슈니 프로필 보러가기 */}
               <button
                 type="button"
                 className="flex items-center gap-1"

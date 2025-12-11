@@ -1,5 +1,3 @@
-// 채팅화면에 쓰이는 매칭 정보 컴포넌트
-
 import React from "react";
 import IconPin2 from '../assets/icon/icon_pin2.svg';
 import IconPeople2 from '../assets/icon/icon_people2.svg';
@@ -35,7 +33,6 @@ const MatchInfo = ({ destination, departureIcon, departure, departureTime, curre
             <div className="flex items-center">
                 <img src={IconPeople2} alt="인원" />
                 <span className="text-body-semibold-14 ml-1">
-                    {/* currentParticipants에만 원하는 색상 클래스 적용 (예: text-primary-50) */}
                     <span className="text-[#FC7E2A]">
                         {currentParticipants}
                     </span>

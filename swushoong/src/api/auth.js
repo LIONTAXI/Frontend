@@ -1,4 +1,3 @@
-// src/api/auth.js
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "https://swushoong.click";
 
@@ -30,7 +29,7 @@ export async function apiRequest(path, options = {}) {
   try {
     data = await res.json();
   } catch {
-    console.log("[apiRequest] JSON 파싱 실패 (body 없을 수 있음)");
+    console.log("[apiRequest] JSON 파싱 실패");
   }
 
   console.log("[apiRequest] 응답 status:", res.status, data);

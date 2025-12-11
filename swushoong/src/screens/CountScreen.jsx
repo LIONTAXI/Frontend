@@ -10,7 +10,7 @@ export default function CountScreen () {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // 1. State에서 택시팟 ID와 Host 여부 정보만 추출 (참여자 목록은 API로 조회)
+    // State에서 택시팟 ID와 Host 여부 정보만 추출 (참여자 목록은 API로 조회)
     const { 
         taxiPartyId: receivedTaxiPartyId, 
         isHost: receivedIsHost,
@@ -19,7 +19,7 @@ export default function CountScreen () {
         chatRoomId: receivedChatRoomId 
     } = location.state || {};
 
-    // 2. 상태 정의
+    // 상태 정의
     const [fare, setFare] = useState(''); // 사용자가 입력한 총 택시비
     const [account, setAccount] = useState(''); // 계좌번호
     const [isLoading, setIsLoading] = useState(true);
@@ -32,13 +32,11 @@ export default function CountScreen () {
     const totalParticipants = finalParticipants.length;
 
     const currentUserId = getCurrentUserId();
-    // 🚨 ResultScreen으로 전달할 chatRoomId를 컴포넌트 스코프에서 정의
     const chatRoomId = location.state?.chatRoomId || 'default';
 
     const handleBackClick = useCallback(() => {
         // chatRoomId와 finalTaxiPartyId(partyId)가 모두 있어야 채팅방으로 이동 가능
         if (chatRoomId && finalTaxiPartyId) {
-            // 채팅방 URL 형식: /chat/:chatRoomId/:partyId
             navigate(`/chat/${chatRoomId}/${finalTaxiPartyId}`, { replace: true });
         } else {
             // 필수 ID가 없으면 채팅 목록이나 이전 화면으로 이동
@@ -47,7 +45,7 @@ export default function CountScreen () {
         }
     }, [navigate, chatRoomId, finalTaxiPartyId]);
 
-    // 3. 컴포넌트 로드 시, API를 통해 상세 정보를 조회
+    // 컴포넌트 로드 시, API를 통해 상세 정보를 조회
     useEffect(() => {
         if (!finalTaxiPartyId) {
             setError("택시팟 ID 정보가 누락되었습니다.");
@@ -59,21 +57,18 @@ export default function CountScreen () {
 
         async function fetchSettlementData() {
             try {
-                // 3-A. 택시팟 상세 정보 조회 (총 요금 등)
+                // 택시팟 상세 정보 조회 (총 요금 등)
                 const details = await getTaxiPartyDetails(finalTaxiPartyId, currentUserId); 
                 setFetchedDetails(details);
                 const hostId = details.hostId;
-                console.log(`🔎 Host ID: ${hostId}`);
-                
-                // 🚨 새로 추가된 API를 사용하여 기존 정산 ID 확인
                 const settlementStatus = await getCurrentSettlementId(finalTaxiPartyId);
                 const existingSettlementId = settlementStatus.settlementId;
         
-                // 🚨 정산 ID가 존재할 경우 즉시 ResultScreen (/send)으로 이동
+                // 정산 ID가 존재할 경우 즉시 ResultScreen (/send)으로 이동
                 if (settlementStatus.hasSettlement && existingSettlementId) {
                     console.log(`🔎 기존 Settlement ID 발견 (New API): ${existingSettlementId}`);
                     
-                    // ⚠️ 중요: 이동 전 chatRoomId와 settlementId를 localStorage에 저장
+                    // 이동 전 chatRoomId와 settlementId를 localStorage에 저장
                     localStorage.setItem("currentChatRoomId", chatRoomId); 
                     localStorage.setItem("currentSettlementId", existingSettlementId);
                     
@@ -87,12 +82,11 @@ export default function CountScreen () {
             
                     navigate(navigatePath, { state: newState });
                     setIsLoading(false);
-                    return; // 함수 실행 중단
+                    return; 
                 }
 
-                // 3-B. 택시팟 참여 요청 목록 조회 (정산 대상자 확정)
+                // 택시팟 참여 요청 목록 조회 (정산 대상자 확정)
                 const requests = await getPartyRequests(finalTaxiPartyId);
-                console.log("✅ getPartyRequests 응답:", requests);
 
                 // 'ACCEPTED' 상태인 참여자만 정산 대상에 포함
                 let participantsList = requests
@@ -110,12 +104,9 @@ export default function CountScreen () {
                         userId: hostId,
                         host: true,
                     });
-                    console.log(`⚠️ Host ID ${hostId}가 목록에 없어 명시적으로 추가했습니다.`);
                 }
 
                 const acceptedParticipants = participantsList;
-
-                console.log("✅ 정산 대상 필터링 결과 (finalParticipants):", acceptedParticipants);
 
                 if (acceptedParticipants.length <= 1) {
                     throw new Error("정산에 필요한 동승자가 없습니다. 최소 2명 (방장 포함)이 ACCEPTED 상태여야 합니다.");
@@ -136,7 +127,7 @@ export default function CountScreen () {
         fetchSettlementData();
     }, [finalTaxiPartyId, chatRoomId]); // chatRoomId를 의존성 배열에 추가
 
-    // 4. 이벤트 핸들러 및 계산 로직 (기존과 동일)
+    // 이벤트 핸들러 및 계산 로직 (기존과 동일)
     const handleFareChange = (e) => {
         const value = e.target.value.replace(/[^0-9]/g, '');
         setFare(value); 
@@ -148,7 +139,7 @@ export default function CountScreen () {
         setError(null);
     };
 
-    // 5. 1/N 정산 금액 계산 로직 (useMemo)
+    // 1/N 정산 금액 계산 로직 (useMemo)
     const calculatedAmounts = useMemo(() => {
         const totalFareValue = parseInt(fare, 10) || 0;
         
@@ -173,11 +164,11 @@ export default function CountScreen () {
 
     }, [fare, finalParticipants, totalParticipants]);
 
-    // 6. 버튼 활성화 조건
+    // 버튼 활성화 조건
     const isInputComplete = fare.length > 0 && account.length > 0;
     const isButtonActive = isInputComplete;
     
-    // 7. 정산 생성 API 호출 핸들러
+    // 정산 생성 API 호출 핸들러
     const handleConfirmClick = async () => {
         if (!isButtonActive) {
             if (totalParticipants <= 1) setError("정산할 동승자가 없습니다.");
@@ -206,29 +197,16 @@ export default function CountScreen () {
         }
 
         let accountNumber = accountNumberCandidate.replace(/[^0-9-]/g, '');
-        //let accountNumber = accountNumberCandidate.replace(/[^0-9]/g, '');
-        
-        console.log("▶️ 최종 Request Body:", {
-        "taxiPartyId": finalTaxiPartyId,
-        "totalFare": totalFareValue,
-        "bankName": bankName,
-        "accountNumber": accountNumber, // 🚨 이 값을 확인!
-        "participants": calculatedAmounts
-        });
 
         if (accountParts.length === 1 && !accountNumber.includes(bankName)) {
-        // 이 로직은 복잡해질 수 있으니, 최대한 명확하게 구분하는 것이 좋습니다.
-        // 예를 들어, 계좌번호에 숫자가 아닌 문자가 포함되어 있다면 그것을 은행명으로 간주합니다.
         
-        // 현재 로직을 유지하면서, bankName이 단순 숫자만 포함하는 계좌번호가 되는 것을 방지
-        const isBankNameProbablyAccount = /^\d+$/.test(bankName); // bankName이 오직 숫자로만 이루어져 있다면?
+        const isBankNameProbablyAccount = /^\d+$/.test(bankName); 
         if (isBankNameProbablyAccount) {
-            bankName = "은행명 없음"; // 서버에서 기본값 처리 가능하도록 임시 설정
-            //accountNumber = accountNumberCandidate.replace(/[^0-9-]/g, ''); // 입력 전체를 계좌번호로 간주
+            bankName = "은행명 없음";
         }
         }
 
-        // 유효성 검사 추가 (생략 가능하나 권장)
+        // 유효성 검사 추가 
         if (!accountNumber) {
             setError("유효한 계좌번호를 입력해주세요.");
             return;
@@ -247,21 +225,14 @@ export default function CountScreen () {
         setError(null);
 
         try {
-            // POST /api/settlements 호출
             const settlementId = await createSettlement(requestBody);
-            console.log("✅ 정산 생성 성공, Settlement ID:", settlementId);
             
             // 성공 시 로컬 스토리지에 ID 저장 후 ResultScreen으로 이동
             localStorage.setItem("currentSettlementId", settlementId);
             localStorage.setItem("currentChatRoomId", chatRoomId);
-            navigate("/send"); // 정산 전송 화면 (ResultScreen)으로 이동
+            navigate("/send"); // 정산 전송 화면
 
         } catch (err) {
-            // 🚨🚨🚨 디버깅 코드 추가 🚨🚨🚨
-            console.log("-----------------------------------------");
-            console.error("❌ 정산 생성 실패 전체 에러 객체:", err);
-            console.log("❌ 서버 응답 데이터 (err.response):", err.response);
-            console.log("-----------------------------------------");
 
             const errorMessage = err.response?.message || "정산 생성에 실패했습니다.";
             const status = err.status;
@@ -272,26 +243,23 @@ export default function CountScreen () {
                 (status === 400 && errorMessage === "정산 생성에 실패했습니다."); 
 
             if (isDuplicateError) {
-                setError("✅ 정산 정보가 이미 생성되어 있습니다. ID를 재조회 후 현황 페이지로 이동합니다.");
+                setError("정산 정보가 이미 생성되어 있습니다. ID를 재조회 후 현황 페이지로 이동합니다.");
 
-                // 🚨 새로 추가된 API를 호출하여 이미 생성된 정산 ID를 조회합니다.
                 let confirmedSettlementId = null;
                 try {
                     const statusCheck = await getCurrentSettlementId(finalTaxiPartyId);
                     confirmedSettlementId = statusCheck.settlementId;
                     
                     if (!statusCheck.hasSettlement || !confirmedSettlementId) {
-                        // 중복 에러가 났는데 ID가 없다면 심각한 문제
                         throw new Error("정산 생성은 실패했으나, 정산 ID를 찾을 수 없습니다.");
                     }
                 } catch (lookupErr) {
-                    console.error("❌ 정산 ID 재조회 실패:", lookupErr);
                     setError("심각한 오류: 정산 ID 재확보에 실패했습니다. 관리자에게 문의하세요.");
                     setIsLoading(false);
                     return;
                 }
 
-                // ⚠️ 중요: 중복 에러 시에도 chatRoomId를 저장
+                // 중복 에러 시에도 chatRoomId를 저장
                 localStorage.setItem("currentChatRoomId", chatRoomId); 
                 localStorage.setItem("currentSettlementId", confirmedSettlementId);
                 
@@ -308,7 +276,6 @@ export default function CountScreen () {
                 return; // 함수 종료
             }
 
-            console.error("❌ 정산 생성 실패:", errorMessage, err);
             setError(errorMessage);
 
         } finally {
@@ -320,7 +287,7 @@ export default function CountScreen () {
         <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
             <Header title="정산 정보" onBack={handleBackClick}/>
 
-            {/* 🚨 로딩 중 전체 화면 비활성화 및 로딩 메시지 표시 */}
+            {/*  로딩 중 전체 화면 비활성화 및 로딩 메시지 표시 */}
             {isLoading && (
                 <div className="absolute inset-0 bg-white bg-opacity-90 flex justify-center items-center z-20">
                     <p className="text-body-semibold-16 text-[#FC7E2A]">정산 정보를 불러오는 중...</p>

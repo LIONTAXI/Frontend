@@ -1,4 +1,3 @@
-// src/screens/JoinTexiMember.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
@@ -28,20 +27,17 @@ export default function JoinTexiMember() {
         const list = await getJoinRequests(taxiPotId);
         console.log("[JoinTexiMember] getJoinRequests list:", list);
 
-        // 1차 매핑: API 응답 -> 화면용 기본 데이터
+      
         const mappedBase = list.map((item) => ({
-          // key + 수락 API용 id
           id: item.taxiUserId,
           name: item.name,
-          // 명세에 age 없고 shortStudentId만 있어서 이걸 표시용으로 사용
           shortStudentId: item.shortStudentId,
-          imgUrl: item.imgUrl, // 원본 경로 (ex. /api/users/3/profile-image)
-          // 버튼 상태용 내부 status
+          imgUrl: item.imgUrl,
           status:
             item.status === "ACCEPTED" ? "accepted" : "pending",
         }));
 
-        // 2차: 각 사람별 프로필 이미지를 blob URL로 변환
+        // 각 사람별 프로필 이미지를 blob URL로 변환
         const mappedWithBlob = await Promise.all(
           mappedBase.map(async (item) => {
             if (!item.imgUrl) {
@@ -70,7 +66,7 @@ export default function JoinTexiMember() {
 
   const handleAccept = async (id) => {
     try {
-      await acceptJoinRequest(id); // /requests/{taxiUserId}/accept
+      await acceptJoinRequest(id); 
       setRequests((prev) =>
         prev.map((item) =>
           item.id === id ? { ...item, status: "accepted" } : item

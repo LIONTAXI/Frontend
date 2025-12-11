@@ -1,4 +1,3 @@
-// src/screens/LoginScreen.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from "../assets/img/img_logo.svg";
@@ -47,17 +46,17 @@ export default function LoginScreen() {
 
       const data = await login(email, password);
 
-      // 1) 서버에서 토큰 꺼내기
+      // 서버에서 토큰 꺼내기
       const token = data.token || data.accessToken;
       if (!token) {
         throw new Error("서버 응답에 인증 토큰이 포함되어 있지 않습니다.");
       }
 
-      // 2) 토큰을 공통 유틸 함수로 저장 (키: authToken)
+      // 토큰을 공통 유틸 함수로 저장 (키: authToken)
       setAuthToken(token);
       console.log("[LoginScreen] 토큰 저장 완료");
 
-      // 3) JWT payload에서 userId 꺼내기
+      // JWT payload에서 userId 꺼내기
       let loginUserId = null;
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
@@ -67,12 +66,12 @@ export default function LoginScreen() {
         console.error("JWT 페이로드 파싱 실패:", e);
       }
 
-      // 4) userId 따로 저장 (다른 화면에서 사용)
+      // userId 따로 저장 (다른 화면에서 사용)
       if (loginUserId != null) {
         localStorage.setItem("userId", String(loginUserId));
       }
 
-      // 5) 홈 화면으로 이동
+      // 홈 화면으로 이동
       navigate("/home");
     } catch (err) {
       console.error("로그인 실패:", err);

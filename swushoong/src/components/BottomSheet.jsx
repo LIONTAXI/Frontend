@@ -1,4 +1,3 @@
-// src/components/BottomSheet.jsx
 import React, { useState, useEffect } from "react";
 
 export default function BottomSheet({
@@ -13,12 +12,10 @@ export default function BottomSheet({
   const [startY, setStartY] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // isOpen 변경될 때 마운트/언마운트 제어
   useEffect(() => {
     if (isOpen) {
       setVisible(true);
     } else {
-      // 닫힐 때 약간의 애니메이션 시간 후 언마운트하고 싶다면 여기서 처리
       setVisible(false);
       setYOffset(0);
       setIsDragging(false);
@@ -36,7 +33,7 @@ export default function BottomSheet({
     e.stopPropagation();
   };
 
-  // ---- 드래그 핸들 / 터치 영역 ----
+  // 드래그 핸들 + 터치 영역 
   const handlePointerDown = (e) => {
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     setStartY(clientY);
@@ -55,11 +52,10 @@ export default function BottomSheet({
   const handlePointerUp = () => {
     if (!isDragging) return;
 
-    // 80px 이상 내리면 닫기
     if (yOffset > 80) {
       if (onClose) onClose();
     }
-    // 리셋
+
     setYOffset(0);
     setIsDragging(false);
     setStartY(null);
@@ -88,7 +84,6 @@ export default function BottomSheet({
         }}
         onClick={handleSheetClick}
       >
-        {/* 위쪽 작은 핸들 바 */}
         {showHandle && (
           <div
             className="w-9 h-[5px] bg-[rgba(60,60,67,0.3)] rounded-full mx-auto mb-5"

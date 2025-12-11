@@ -1,11 +1,8 @@
-// 정산 정보 확인 페이지 (참여자용-동승슈니)
-
 import React, {useState, useEffect, useCallback} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import IconCopy from "../assets/icon/icon_copy.svg";
 import { getSettlementDetails } from "../api/settlements";
-// 현재 로그인 유저 ID를 가져오는 함수
 import { getCurrentUserId } from "../api/token";
 
 // 금액을 천 단위 콤마와 '원' 단위로 포맷팅하는 함수
@@ -31,24 +28,23 @@ export default function PayMemberScreen() {
     const settlementIdFromState = location.state?.settlementId;
     const settlementId = settlementIdFromState || localStorage.getItem("currentSettlementId");
 
-    // API 연결: 정산 상세 정보 불러오기
+    // 정산 상세 정보 불러오기
     const loadSettlementDetails = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         
         if (!settlementId || typeof settlementId !== 'number' || settlementId <= 0) {
-            setError("❌ 정산 ID를 찾을 수 없거나 유효하지 않습니다.");
+            setError("정산 ID를 찾을 수 없거나 유효하지 않습니다.");
             setIsLoading(false);
             return;
         }
 
         try {
-            // API 호출: 정산 상세 조회 (GET /api/settlements/{settlementId})
+            // 정산 상세 조회 
             const data = await getSettlementDetails(parseInt(settlementId, 10));
             setSettlementData(data);
         } catch (err) {
             const errorMessage = err.response?.message || "정산 정보를 불러오는 데 실패했습니다.";
-            console.error("❌ 정산 상세 조회 실패:", errorMessage, err);
             setError(errorMessage);
         } finally {
             setIsLoading(false);
@@ -99,7 +95,7 @@ export default function PayMemberScreen() {
         <div className="h-full w-full bg-white max-w-[393px] mx-auto font-pretendard flex flex-col"> 
             <Header title="정산 정보" onBack={handleGoBackToChat} />
 
-            {/* 2. 지불한 택시비 및 계좌 정보 */}
+            {/* 지불한 택시비 및 계좌 정보 */}
             <div className="flex-col flex-grow w-full space-y-4 px-4 py-4">
                 <div className="w-full space-y-3">
                     {/* 택시비 */}
@@ -129,7 +125,7 @@ export default function PayMemberScreen() {
 
             </div>
 
-            {/* 3. 인당 지불할 금액 섹션  */}
+            {/* 인당 지불할 금액 섹션  */}
             <div className="bg-[#FFF4DF] h-screen flex-col flex-grow w-full px-4 pt-6 pb-64">
             <div className="bg-white rounded-lg p-4 space-y-4">
                 <h3 className="text-head-semibold-20 text-[#000] mb-2 mt-0">
