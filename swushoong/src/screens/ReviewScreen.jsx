@@ -123,7 +123,6 @@ export default function ReviewScreen() {
             await postBlockUser(currentUserId, targetUserId); // blockerId: 나, blockedId: 타겟 사용자
             
             alert(`${profileData.nickname || '사용자'} 차단이 완료되었습니다.`);
-            navigate('/'); 
 
         } catch (error) {
             console.error("사용자 차단 실패:", error);

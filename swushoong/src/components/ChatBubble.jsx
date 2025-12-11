@@ -10,17 +10,46 @@ export default function ChatBubble({
   avatarUrl = "",
   imageUrl = "",
   className = "",
+  isHostMessage = false,
+  systemType = "default",
 }) {
   // 💛 시스템 메시지 (가운데 노란 박스)
   if (side === "system") {
+    //const isYellowBox = systemType === 'system-match-ended' || 
+    //                   systemType === 'system-settlement-completed' ||
+     //                 systemType === 'system-connect';
+
+    const isYellowBox = systemType !== 'system-member-kicked';
+
+    if (isYellowBox) {
+        return (
+            <div className={`w-full flex justify-center ${className}`}>
+                <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 text-black-90 text-center leading-[1.4] whitespace-pre-line">
+                    {text}
+                </div>
+            </div>
+        );
+    }
+
+
+  if (systemType === 'system-member-kicked') {
+        return (
+            <div className={`w-full flex justify-center my-2 ${className}`}>
+                <span className="text-body-regular-14 text-black-50 text-center leading-[1.4]">
+                    {text}
+                </span>
+            </div>
+        );
+    }
+
     return (
-      <div className={`w-full flex justify-center ${className}`}>
-        <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 text-black-90 text-center leading-[1.4] whitespace-pre-line">
-          {text}
+        <div className={`w-full flex justify-center ${className}`}>
+            <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 text-black-90 text-center leading-[1.4] whitespace-pre-line">
+                {text}
+            </div>
         </div>
-      </div>
     );
-  }
+  }
 
   const isLeft = side === "left";
 
@@ -114,9 +143,14 @@ export default function ChatBubble({
           {/* 이름/나이 라인 */}
           {(name || age) && (
             <div className="flex items-center">
+              {isHostMessage && (
+                 <span className="mr-1 text-base leading-none">
+                  👑
+                </span>
+               )}
               <span className="text-body-regular-14 text-black-70">
                 {name}
-                {age && <span className="text-body-regular-14 text-black-50">. {age}</span>}
+                {age && <span className="text-body-regular-14 text-black-50"> · {age}</span>}
               </span>
             </div>
           )}

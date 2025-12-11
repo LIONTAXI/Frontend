@@ -200,12 +200,12 @@ export default function ChatListScreen() {
                             {matchingChats.map(chat => (
                                 <ChatItem
                                     key={chat.chatRoomId}
-                                    title={chat.title || '택시팟 제목'}
+                                    title={chat.destination || '택시팟 제목'}
                                     lastMessage={chat.lastMessage || '메시지 없음'}
                                     time={chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '시간 미정'}
                                     isMatching={!chat.closed}
                                     hasUnread={chat.hasUnread || false}
-                                    avatarIcon={chat.avatarIcon || '🐙'}
+                                    avatarIcon={chat.markerEmoji || '🐙'}
                                     onClick={() => handleChatClick(chat)}
                                 />
                             ))}

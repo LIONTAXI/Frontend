@@ -64,6 +64,23 @@ export default function ChatScreen() {
 
         // 서버 응답 예시: { "messageId": 10, "senderId": 3, "name": "이슈니", "shortStudentId": "23", "content": "...", "sentAt": "2025-11-10T19:20:00" }
         const isMyMessage = data.senderId === currentUserId; 
+        const isHostMessage = data.senderId === matchInfo?.hostId;
+
+        const messageType = data.messageType || 'TEXT'; // messageType이 없으면 TEXT로 가정
+        const messageVariant = messageType === 'IMAGE' ? 'image' : 'text'; 
+        const messageContent = messageType === 'IMAGE' ? data.content || data.imageUrl : data.content;
+
+        // 만약 SYSTEM 메시지라면, 'system' 타입으로 강제 설정
+    if (messageType === 'SYSTEM') {
+        return {
+            id: data.messageId || Date.now(),
+            type: 'system', // ChatBubble에서 side="system"으로 처리되도록 설정
+            text: data.content,
+            timestamp: new Date(data.sentAt).getTime(),
+            systemType: 'system-default', // 또는 서버에서 제공하는 type을 사용
+        };
+    }
+
 
         // KST(한국 표준시, UTC+9)로 정확히 포맷팅
         const formatter = new Intl.DateTimeFormat('ko-KR', {
@@ -84,49 +101,117 @@ export default function ChatScreen() {
         return {
             id: data.messageId || Date.now(),
             side: isMyMessage ? 'right' : 'left',
-            type: 'text',
+            variant: messageVariant,
             name: isMyMessage ? '나' : data.name,
             age: data.shortStudentId,
-            text: data.content,
+            text: messageContent,
+            imageUrl: data.imageUrl,
             //time: new Date(data.sentAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
             time: formatter.format(dateObject),
             timestamp: new Date(data.sentAt).getTime(),
+            isHostMessage: isHostMessage,
         };
     };
 
     // STOMP 메시지 수신 처리 함수
+    // STOMP 메시지 수신 처리 함수
     const handleStompMessage = useCallback(async (data) => {
-    /*
-        if (data.type === 'system-settlement-completed') {
 
-            console.log("💰 정산 완료 시스템 메시지 수신:", data);
-            setMatchStatus('ended');
-            setIsSettlementEntered(true);
+        // 💰 정산 완료 시스템 메시지 처리: 호스트가 정산 정보를 처음 입력했을 때 (system-settlement-completed)
+        if (data.type === 'system-settlement-completed') {
 
-            if (!isHost) {
-            }   
+            console.log("💰 정산 완료 시스템 메시지 수신:", data);
+            setMatchStatus('ended');
+            setIsSettlementEntered(true);
 
-            // 총대 또는 서버가 보내준 시스템 메시지 내용을 출력
+            // 동승자의 경우, 정산 ID 재확인 로직 (기존 코드 유지)
+            if (!isHost) {
+                console.log("--- 동승자: STOMP 수신 직후 getCurrentSettlementId 재확인 ---");
+                try {
+                    const testStatus = await getCurrentSettlementId(partyId); 
+                    if (testStatus.hasSettlement) {
+                        console.log("✅ 성공: getCurrentSettlementId 호출 성공!", testStatus);
+                    } else {
+                        console.log("⚠️ 경고: getCurrentSettlementId 호출 성공, 하지만 hasSettlement: false", testStatus);
+                    }
+                } catch (error) {
+                    console.error("❌ 실패: getCurrentSettlementId 호출 시 에러 발생!", error.message, error);
+                }
+            }
+            
+            const SETTLEMENT_COMPLETE_MESSAGE = '총대슈니가 정산정보를 입력했어요.\n빠른 시일 내에 정산해 주세요.';
+            setMessages(prev => {
+                const isDuplicate = prev.some(msg => msg.type === 'system' && msg.text === SETTLEMENT_COMPLETE_MESSAGE);
+                if (isDuplicate) return prev;
+                return [ ...prev, { 
+                    id: Date.now(), 
+                    type: 'system', 
+                    text: SETTLEMENT_COMPLETE_MESSAGE, 
+                    timestamp: Date.now(),
+                    systemType: data.type // UI 분기를 위해 systemType 전달
+                }];
+            });
+        }
+        /*
+        // 🛑 매칭 종료 시스템 메시지 처리: 호스트가 '매칭 종료' 버튼을 눌렀을 때 (system-match-ended)
+        if (data.type === 'system-match-ended') {
+            console.log("🛑 매칭 종료 시스템 메시지 수신:", data);
+            
+            // 상태 업데이트 및 시스템 메시지 추가
+            setMatchStatus('ended'); 
+            
             setMessages((prev) => [...prev, {
-                id: data.messageId || Date.now(), // messageId가 있으면 사용
-                type: 'system',
-                text: data.content,
-                timestamp: new Date().getTime(),
-            }]);
+                id: Date.now(),
+                type: 'system',
+                text: data.content, // "목적지에 도착했다면\n총대슈니는 정산정보를 입력해 주세요"
+                timestamp: new Date().getTime(),
+                systemType: data.type // UI 분기를 위해 systemType 전달
+            }]);
             return;
         }
-            */
 
-        if (!data.sentAt || !data.content) {
-            console.warn("⚠️ STOMP 메시지 필터링: sentAt 또는 content가 누락된 메시지 무시", data);
-            return; 
+        // 🚫 강퇴 시스템 메시지 처리: 호스트가 멤버를 내보냈을 때 (system-member-kicked)
+        if (data.type === 'system-member-kicked') {
+            console.log("🚫 강퇴 시스템 메시지 수신:", data);
+            
+            setMessages((prev) => [...prev, {
+                id: Date.now(),
+                type: 'system', // ChatScreen의 렌더링 로직에서 'system' 타입으로 처리됨
+                text: data.content, // "ㅇㅇ님이 내보내졌습니다."
+                timestamp: new Date().getTime(),
+                systemType: data.type // UI 분기를 위해 systemType 전달
+            }]);
+            return;
         }
-        
-        // 일반 채팅 메시지 처리
-        const receivedMessage = formatMessage(data);
 
-        setMessages((prev) => [...prev, receivedMessage]);
-    }, [currentUserId, isHost]);// currentUserId가 변경될 때마다 재생성
+
+
+        // 기타 시스템 메시지 처리 (예: STOMP 연결 성공)
+        if (data.type && data.type.startsWith('system-') && data.content) {
+            console.log("ℹ️ 일반 시스템 메시지 수신:", data);
+            setMessages((prev) => [...prev, {
+                id: Date.now(),
+                type: 'system',
+                text: data.content,
+                timestamp: new Date().getTime(),
+                systemType: data.type
+            }]);
+            return;
+        }
+        */
+
+
+        // 필터링: sentAt 또는 content가 누락된 메시지 무시
+        if (!data.sentAt || !data.content) {
+            console.warn("⚠️ STOMP 메시지 필터링: sentAt 또는 content가 누락된 메시지 무시", data);
+            return; 
+        }
+        
+        // 일반 메시지 (TEXT/IMAGE) 처리
+        const receivedMessage = formatMessage(data);
+
+        setMessages((prev) => [...prev, receivedMessage]);
+    }, [currentUserId, isHost]); // currentUserId가 변경될 때마다 재생성
 
 
     // 스크롤을 항상 가장 아래로 이동시키는 함수
@@ -172,7 +257,7 @@ export default function ChatScreen() {
                 setIsHost(partyInfo.hostId === currentUserId);
                 setMatchInfo(partyInfo);
 
-                if (partyInfo.status === 'ENDED' || partyInfo.isCompleted) { // API 응답 필드명에 따라 수정 필요
+                if (partyInfo.status === 'ENDED' || partyInfo.status === 'FINISHED' || partyInfo.isCompleted) {
                     setMatchStatus('ended');
                     console.log("🔎 채팅방 로드 시 매칭 상태 확인: ENDED");
                 }
@@ -225,21 +310,25 @@ export default function ChatScreen() {
         if (location.state && location.state.settlementCompleted) {
             setMatchStatus('ended');
             setIsSettlementEntered(true);
-/*
             setMessages(prev => {
-                const isDuplicate = prev.length > 0 && prev[prev.length - 1].type === 'system' && prev[prev.length - 1].text === SETTLEMENT_COMPLETE_MESSAGE;
-                if (isDuplicate) return prev; 
-                return [ ...prev, { id: Date.now(), type: 'system', text: SETTLEMENT_COMPLETE_MESSAGE, timestamp: Date.now() }];
-            });
-*/
-            if (isHost && stompClientRef.current?.connected) {
-                // 메시지 전송 (동승자가 실시간 수신할 수 있도록)
-                sendChatMessage(stompClientRef.current, chatRoomId, SETTLEMENT_COMPLETE_MESSAGE, currentUserId);
+                const isDuplicate = prev.some(msg => msg.type === 'system' && msg.text === SETTLEMENT_COMPLETE_MESSAGE); 
+            
+            if (isDuplicate) {
+                console.log("정산 완료 시스템 메시지: 중복 방지로 추가하지 않음.");
+                return prev; 
             }
-
+            console.log("정산 완료 시스템 메시지 추가.");
+            return [ ...prev, { 
+                id: Date.now(), 
+                type: 'system', 
+                text: SETTLEMENT_COMPLETE_MESSAGE, 
+                timestamp: Date.now(),
+                systemType: 'system-settlement-completed' // ✅ 이 부분을 추가
+            }];
+            });
             navigate(location.pathname, { replace: true, state: {} });
         }
-    }, [location, navigate, setMessages, isHost]); 
+    }, [location, navigate, setMessages]); 
 
     // 최종 정산 완료 상태 처리 (location state 기반)
     useEffect(() => {
@@ -299,6 +388,7 @@ export default function ChatScreen() {
             
             console.log("이미지 전송 요청 성공:", response);
 
+            setMessages((prev) => prev.filter(msg => msg.id !== tempMessageId));
 
         } catch (error) {
             console.error("이미지 전송 실패:", error);
@@ -390,19 +480,6 @@ export default function ChatScreen() {
                 console.log(`매칭 파티 ${partyId} 종료 API 호출 성공.`);
 
                 setMatchStatus('ended');
-                /*
-                const DELAY_MS = 5000;
-                setTimeout(() => {
-                    setMessages((prev) => [...prev, {
-                        id: Date.now() + 1,
-                        type: 'system', 
-                        text: '목적지에 도착했다면\n총대슈니는 정산정보를 입력해 주세요', 
-                        timestamp: Date.now(),
-                    }]);
-                }, DELAY_MS); 
-                */
-               const END_MATCH_MESSAGE = '목적지에 도착했다면\n총대슈니는 정산정보를 입력해 주세요';
-                sendChatMessage(stompClientRef.current, chatRoomId, END_MATCH_MESSAGE, currentUserId);
 
             } catch (error) {
                 console.error("매칭 종료 실패:", error);
@@ -492,7 +569,7 @@ export default function ChatScreen() {
                     <div className="w-full flex justify-center py-4"> 
                         <MatchInfo
                             destination={matchInfo.destination}
-                            departureIcon="🍄" 
+                            departureIcon={matchInfo.markerEmoji}
                             departure={matchInfo.departure}
                             departureTime={matchInfo.meetingTime}
                             //members={`${matchInfo.currentParticipants}/${matchInfo.maxParticipants}`}
@@ -524,17 +601,11 @@ export default function ChatScreen() {
                                         </span>
                                     </div>
                                 )}
-                                {isSystem && (
-                                    <div className="w-full flex justify-center my-4">
-                                        <div className="inline-flex px-4 py-3 bg-[#FFF4DF] rounded text-body-regular-14 
-                                                         text-black-90 text-center leading-[1.4] whitespace-pre-line">
-                                            {msg.text}
-                                        </div>
-                                    </div>
-                                )}
-                                {!isSeparator && !isSystem && (
+                                
+                                {!isSeparator && (
                                     <ChatBubble
-                                        side={msg.side}
+                                        // type이 'system'이면 side를 'system'으로 설정하여 ChatBubble이 처리하도록 위임
+                                        side={isSystem ? 'system' : msg.side} 
                                         variant={msg.type || 'text'} 
                                         text={msg.text}
                                         time={msg.time}
@@ -542,6 +613,8 @@ export default function ChatScreen() {
                                         age={msg.age}
                                         avatarUrl={msg.avatarUrl}
                                         className="my-3"
+                                        isHostMessage={msg.isHostMessage}
+                                    systemType={msg.systemType} // systemType을 ChatBubble로 전달
                                     />
                                 )}
                             </React.Fragment>

@@ -15,7 +15,8 @@ export default function CountScreen () {
         taxiPartyId: receivedTaxiPartyId, 
         isHost: receivedIsHost,
         isSettlementEntered: initialIsSettlementEntered = false,
-        participants: initialParticipants = EMPTY_PARTICIPANTS 
+        participants: initialParticipants = EMPTY_PARTICIPANTS,
+        chatRoomId: receivedChatRoomId 
     } = location.state || {};
 
     // 2. 상태 정의
@@ -34,6 +35,17 @@ export default function CountScreen () {
     // 🚨 ResultScreen으로 전달할 chatRoomId를 컴포넌트 스코프에서 정의
     const chatRoomId = location.state?.chatRoomId || 'default';
 
+    const handleBackClick = useCallback(() => {
+        // chatRoomId와 finalTaxiPartyId(partyId)가 모두 있어야 채팅방으로 이동 가능
+        if (chatRoomId && finalTaxiPartyId) {
+            // 채팅방 URL 형식: /chat/:chatRoomId/:partyId
+            navigate(`/chat/${chatRoomId}/${finalTaxiPartyId}`, { replace: true });
+        } else {
+            // 필수 ID가 없으면 채팅 목록이나 이전 화면으로 이동
+            console.warn("채팅방 ID 또는 파티 ID가 없어 이전 화면으로 돌아갑니다.");
+            navigate(-1);
+        }
+    }, [navigate, chatRoomId, finalTaxiPartyId]);
 
     // 3. 컴포넌트 로드 시, API를 통해 상세 정보를 조회
     useEffect(() => {
@@ -306,7 +318,7 @@ export default function CountScreen () {
 
     return (
         <div className="relative w-[393px] h-screen bg-white font-pretendard mx-auto flex flex-col overflow-hidden">
-            <Header title="정산 정보" />
+            <Header title="정산 정보" onBack={handleBackClick}/>
 
             {/* 🚨 로딩 중 전체 화면 비활성화 및 로딩 메시지 표시 */}
             {isLoading && (

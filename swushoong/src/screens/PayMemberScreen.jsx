@@ -1,7 +1,7 @@
 // 정산 정보 확인 페이지 (참여자용-동승슈니)
 
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, {useState, useEffect, useCallback} from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import IconCopy from "../assets/icon/icon_copy.svg";
 import { getSettlementDetails } from "../api/settlements";
@@ -17,6 +17,7 @@ const formatCurrency = (amount) => {
 
 export default function PayMemberScreen() {
     const navigate = useNavigate();
+    const location = useLocation();
     
     const [settlementData, setSettlementData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,17 +25,19 @@ export default function PayMemberScreen() {
     
     // 실제 ID를 가져옵니다.
     const currentUserId = getCurrentUserId(); 
-    
-    // 정산 ID를 URL 파라미터나 state에서 가져와야 하지만, 여기서는 임시로 고정값/저장된 값 사용
-    const settlementId = localStorage.getItem("currentSettlementId") || 3; 
+    const chatRoomId = location.state?.chatRoomId;
+    const partyId = location.state?.taxiPartyId;
+
+    const settlementIdFromState = location.state?.settlementId;
+    const settlementId = settlementIdFromState || localStorage.getItem("currentSettlementId");
 
     // API 연결: 정산 상세 정보 불러오기
     const loadSettlementDetails = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         
-        if (!settlementId) {
-            setError("❌ 정산 ID를 찾을 수 없습니다.");
+        if (!settlementId || typeof settlementId !== 'number' || settlementId <= 0) {
+            setError("❌ 정산 ID를 찾을 수 없거나 유효하지 않습니다.");
             setIsLoading(false);
             return;
         }
@@ -55,6 +58,15 @@ export default function PayMemberScreen() {
     useEffect(() => {
         loadSettlementDetails();
     }, [loadSettlementDetails]);
+
+    const handleGoBackToChat = () => {
+        if (chatRoomId && partyId) {
+            navigate(`/chat/${chatRoomId}/${partyId}`); 
+        } else {
+            // 필수 ID가 없다면 안전하게 이전 페이지로 돌아가거나 목록으로 이동
+            navigate(-1); 
+        }
+    };
 
     if (isLoading) return <div className="text-center p-8 text-black-90">정산 정보를 불러오는 중...</div>;
     if (error || !settlementData) return <div className="text-center p-8 text-red-500">{error || "정산 정보가 없습니다."}</div>;
@@ -85,7 +97,7 @@ export default function PayMemberScreen() {
 
     return (
         <div className="h-full w-full bg-white max-w-[393px] mx-auto font-pretendard flex flex-col"> 
-            <Header title="정산 정보" />
+            <Header title="정산 정보" onBack={handleGoBackToChat} />
 
             {/* 2. 지불한 택시비 및 계좌 정보 */}
             <div className="flex-col flex-grow w-full space-y-4 px-4 py-4">
