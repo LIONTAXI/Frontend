@@ -23,7 +23,7 @@ const ENUM_TO_LABEL = {
 // == 초기 상태 데이터 ==
 const initialProfileData = {
     nickname: "",
-    age: '?', // API에 age 필드가 없으므로 임시로 '?' 처리
+    shortStudentId: '?', 
     rePurchaseRate: null,
     noSettlementCount: 0,
     positiveReviews: [],
@@ -56,7 +56,7 @@ export default function ReviewScreen() {
             // API 응답 데이터 가공 및 태그 매핑
             const transformedData = {
                 nickname: data.name || "알 수 없음", 
-                age: data.age || '?', // API에 age 필드가 없으므로 '?'로 유지
+                shortStudentId: data.shortStudentId || '?',
                 
                 // 재매칭 희망률: null이면 null로 저장하여 "데이터 없음" 표시 유도
                 rePurchaseRate: data.matchPreferenceRate !== null 
@@ -178,7 +178,7 @@ export default function ReviewScreen() {
                     <div>
                         <div className="flex items-center mb-1">
                             <span className="text-head-semibold-20 text-black-70 mr-2">{profileData.nickname}</span>
-                            <span className="text-head-semibold-20 text-black-70">· {profileData.age}</span>
+                            <span className="text-head-semibold-20 text-black-70">· {profileData.shortStudentId}</span>
                         </div>
                         <div className="flex text-sm">
                             <span className="text-black-70 text-body-regular-14 mr-1">재매칭 희망률</span>
