@@ -1,4 +1,3 @@
-// 동승슈니에 대한 휴기 작성 
 import React, { useState, useMemo } from "react";
 import IconLeft from '../assets/icon/icon_left.svg';
 import IconDown from '../assets/icon/icon_down.svg';
@@ -6,7 +5,7 @@ import BtnNegetive from "../components/btn_negetive";
 import BtnPositive from "../components/btn_positive";
 
 export default function ReviewMemberScreen () {
-    // ====== 더미 데이터 사용자 =======
+    // 더미 데이터 사용자
     const dummyUser = { name: "박슈니", age: 23, role: "동승슈니" };
 
     // 후기 선택 항목
@@ -145,7 +144,7 @@ export default function ReviewMemberScreen () {
     return (
         <div className="px-4 bg-white min-h-screen"> 
             
-            {/* 1. 상단 헤더 */}
+            {/* 상단 헤더 */}
             <div className="flex items-center justify-between mb-6 mt-6">
                 <div className="flex justify-start"> 
                     <button>
@@ -158,7 +157,7 @@ export default function ReviewMemberScreen () {
                 <div className="w-10"></div>
             </div>
 
-            {/* 2. 사용자 정보 */}
+            {/* 사용자 정보 */}
             <div className="flex items-center mb-8
                             rounded border border-gray-300 bg-white
                             px-3 py-4"
@@ -172,11 +171,11 @@ export default function ReviewMemberScreen () {
                 </div>
             </div>
 
-            {/* 3. 후기 선택 (긍정) */}
+            {/* 후기 선택 (긍정) */}
             <h2 className="head-semibold-20 text-[##000] mb-3">후기 선택</h2>
             {renderPositiveButtons()}
 
-            {/* 4. 아쉬운 점 (부정) */}
+            {/* 아쉬운 점 (부정) */}
             <div className="mb-0">
                 <button 
                     onClick={() => setShowNegative(!showNegative)}
@@ -195,10 +194,10 @@ export default function ReviewMemberScreen () {
             
             <div className="fixed bottom-10 z-10 w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
                 
-                {/* 5. 다시 만나고 싶은 여부 */}
+                {/* 다시 만나고 싶은 여부 */}
                 {renderMeetAgainButtons()}
 
-                {/* 6. 등록 버튼 */}
+                {/* 등록 버튼 */}
                 <div className="mt-4">
                     <button 
                         onClick={() => console.log("등록 버튼 클릭", { selectedPositive, selectedNegative, wouldMeetAgain })} 

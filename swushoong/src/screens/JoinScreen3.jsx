@@ -1,4 +1,3 @@
-// src/screens/JoinScreen3.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -65,9 +64,6 @@ export default function JoinScreen3() {
     }
   };
 
-  // 버튼 클릭 시 동작:
-  // 1) 아직 이름/학번이 없으면 OCR 요청 실행
-  // 2) 이미 이름/학번이 채워져 있으면 결과 화면으로 이동
   const handlePrimaryClick = () => {
     if (!selectedImage || isSubmitting) return;
 

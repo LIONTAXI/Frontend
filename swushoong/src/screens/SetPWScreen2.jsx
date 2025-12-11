@@ -1,4 +1,3 @@
-// src/screens/JoinScreen2.jsx
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
@@ -64,13 +63,13 @@ export default function JoinScreen2() {
 
   return (
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
-      {/* ===== 헤더 ===== */}
+      {/*  헤더  */}
       <Header title="비밀번호 재설정" onBack={handleBack} />
 
-      {/* ===== 메인 영역 ===== */}
+      {/*  메인 영역  */}
       <main className="flex-1 px-4 pt-8 pb-4">
         <div className="w-full max-w-[361px] mx-auto flex flex-col gap-8">
-          {/* --- 아이디 영역 (인증 완료 표시) --- */}
+          {/*  아이디 영역 (인증 완료 표시) */}
           <section className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <p className="text-head-semibold-20 text-black-90">아이디</p>
@@ -96,7 +95,7 @@ export default function JoinScreen2() {
             </div>
           </section>
 
-          {/* --- 비밀번호 입력 --- */}
+          {/*  비밀번호 입력  */}
           <section className="flex flex-col gap-4">
             <p className="text-head-semibold-20 text-black-90">새로운 비밀번호</p>
 
@@ -159,7 +158,7 @@ export default function JoinScreen2() {
             </div>
           </section>
 
-          {/* --- 비밀번호 확인 --- */}
+          {/*  비밀번호 확인  */}
           <section className="flex flex-col gap-4">
             <p className="text-head-semibold-20 text-black-90">
               비밀번호 확인
@@ -213,7 +212,7 @@ export default function JoinScreen2() {
         </div>
       </main>
 
-      {/* ===== 하단 완료 버튼 ===== */}
+      {/*  하단 완료 버튼  */}
       <div className="px-4 pb-6">
         <BtnLong
           label="완료"

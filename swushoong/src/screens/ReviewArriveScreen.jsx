@@ -28,7 +28,6 @@ const ENUM_TO_LABEL = Object.entries(TAG_LABEL_TO_ENUM).reduce((acc, [label, enu
     return acc;
 }, {});
 
-// == (초기 상태용) ==
 const initialProfileData = {
     nickname: "", // 리뷰를 보낸 사람 (reviewer) 이름
     shortStudentId: "", // 리뷰를 보낸 사람의 학번 끝 2자리 (age 필드 대체)
@@ -39,7 +38,7 @@ const initialProfileData = {
     // 네비게이션을 위해 필요한 데이터
     taxiPartyId: null, 
     reviewerId: null, 
-    canWriteBack: false, // API 응답의 canWriteBack 필드
+    canWriteBack: false, 
 };
 
 
@@ -51,7 +50,6 @@ export default function ReviewArriveScreen() {
     const [error, setError] = useState(null); // 에러 상태
 
     const [isSubmitEnabled] = useState(true);
-    //const [isUserReviewed, setIsUserReviewed] = useState(false);
     const navigate = useNavigate();
 
     const fetchReviewDetail = useCallback(async () => {
@@ -118,8 +116,6 @@ export default function ReviewArriveScreen() {
         if (profileData.canWriteBack) {
             console.log("나도 후기 작성하러 가기 클릭: 후기 작성 페이지로 이동");
             
-            // 후기 작성 페이지로 이동 시, 택시 파티 ID와 리뷰 대상자 ID(리뷰를 보낸 사람, 즉 data.reviewerId)를 전달합니다.
-            // 라우트: /review-all/{taxiPartyId}/{targetUserId}
             navigate(`/review-all/${profileData.taxiPartyId}/${profileData.reviewerId}`);
             
         } else {
@@ -165,7 +161,7 @@ export default function ReviewArriveScreen() {
 
     return (
         <div className="relative w-[393px] h-screen bg-white px-4 font-pretendard flex flex-col">
-            {/* 1. 상단 헤더 */}
+            {/* 상단 헤더 */}
             <Header2 title="후기 도착" onBack={handleBack} onMenu />
 
             <main className="flex-grow p-4 pb-24">
@@ -173,7 +169,7 @@ export default function ReviewArriveScreen() {
                     <h1>{profileData.nickname}님이 보낸 후기예요.</h1>
                 </div>
 
-                {/* 2. 프로필 정보 섹션 */}
+                {/* 프로필 정보 섹션 */}
                 <div className="flex items-center mb-14 bg-black-10 px-4 py-3 rounded">
                     {/* 프로필 이미지 */}
                     <div className="w-[50px] h-[50px] bg-black-20 rounded-full mr-2"><img src={Profile} alt="프로필" /></div> 
@@ -197,7 +193,7 @@ export default function ReviewArriveScreen() {
                     </div>
                 </div>
 
-                {/* 3. 받은 매너 평가 섹션 */}
+                {/* 받은 매너 평가 섹션 */}
                 <h2 className="text-head-semibold-20 text-[#000] my-4">받은 매너 평가</h2>
                 <div className="flex flex-wrap">
                     {profileData.positiveReviews && profileData.positiveReviews.length > 0 ? (
@@ -215,7 +211,7 @@ export default function ReviewArriveScreen() {
                     )}
                 </div>
 
-                {/* 4. 받은 비매너 평가 섹션 */}
+                {/* 받은 비매너 평가 섹션 */}
                 <h2 className="text-head-semibold-20 text-[#000] my-4 mt-14">받은 비매너 평가</h2>
                 <div className="flex flex-wrap">
                     {profileData.negativeReviews && profileData.negativeReviews.length > 0 ? (

@@ -1,4 +1,3 @@
-// src/screens/EditProfile.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -46,7 +45,7 @@ export default function EditProfile() {
         };
         setProfile(next);
 
-        // 🔹 서버에 저장된 기존 프로필 이미지를 blob으로 받아서 미리보기로 사용
+        // 서버에 저장된 기존 프로필 이미지를 blob으로 받아서 미리보기로 사용
         if (imgFromServer) {
           const blobUrl = await fetchProfileImageWithAuth(imgFromServer);
           if (!cancelled && blobUrl) {
@@ -60,11 +59,10 @@ export default function EditProfile() {
 
     return () => {
       cancelled = true;
-      // 필요하면 여기서 URL.revokeObjectURL(previewUrl) 정리 가능
     };
   }, [USER_ID]);
 
-  // 프로필 영역 클릭 → 파일 선택창 열기
+  // 프로필 영역 클릭 -> 파일 선택창 열기
   const handleClickProfile = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -97,8 +95,6 @@ export default function EditProfile() {
         email: updated.email ?? prev.email,
       }));
 
-      //    -> 방금 선택한 로컬 미리보기 이미지를 계속 유지
-      //    -> 나갔다가 다시 들어오면 위 useEffect에서 서버 이미지를 blob으로 다시 불러옴
     } catch (err) {
       console.error("[EditProfile] 프로필 이미지 업로드 실패:", err);
     }

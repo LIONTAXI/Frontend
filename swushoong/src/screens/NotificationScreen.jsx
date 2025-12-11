@@ -1,4 +1,3 @@
-// src/screens/NotificationScreen.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -21,7 +20,6 @@ export default function NotificationScreen() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // createdAt → "11:44" 또는 "10/31"
   const formatTime = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -40,7 +38,7 @@ export default function NotificationScreen() {
     return `${month}/${day}`;
   };
 
-  // 서버 알림 → 화면용 객체로 매핑
+  // 서버 알림 -> 화면용 객체로 매핑
   const mapNotification = (item) => {
     const type = item.type || item.notificationType || null;
     const targetType = item.targetType || item.target_type || null;
@@ -71,9 +69,9 @@ export default function NotificationScreen() {
 
     return {
       id: item.id,
-      type,          // 예: "TAXI_PARTICIPATION_REQUEST"
-      targetType,    // 예: "TAXI_PARTY" / "TAXI_ROOM"
-      targetId,      // raw targetId
+      type,          
+      targetType,    
+      targetId,     
       taxiPotId,
       roomId,
       settlementId,
@@ -145,7 +143,7 @@ export default function NotificationScreen() {
   const handleClickNotification = async (item) => {
     console.log("알림 클릭", item);
 
-    // 1) 안 읽은 알림이면 읽음 처리
+    // 안 읽은 알림이면 읽음 처리
     if (USER_ID && item.unread) {
       try {
         await readNotification(item.id, USER_ID);
@@ -160,9 +158,9 @@ export default function NotificationScreen() {
       }
     }
 
-    // 2) 타입별로 네비게이션 분기
+    // 타입별로 네비게이션 분기
     switch (item.type) {
-      // ✅ 택시팟 참여 요청 알림 → 참여 요청 목록
+      // 택시팟 참여 요청 알림 → 참여 요청 목록
       case "TAXI_PARTICIPATION_REQUEST": {
         if (item.targetType === "TAXI_PARTY" && item.taxiPotId) {
           navigate("/join-taxi", {
@@ -172,22 +170,19 @@ export default function NotificationScreen() {
         break;
       }
 
-      // ✅ 택시팟 참여 수락 알림 → 채팅방 이동
+      // 택시팟 참여 수락 알림 → 채팅방 이동
       case "TAXI_PARTICIPATION_ACCEPTED": {
-        // 1차로 알림에서 바로 꺼낼 수 있는 값
         let roomId = item.roomId != null ? Number(item.roomId) : null;
         let partyId =
           item.taxiPotId != null ? Number(item.taxiPotId) : null;
 
-        // 🔥 특수케이스: targetType이 TAXI_ROOM인데 taxiPotId가 없으면
-        // 백엔드가 roomId에 taxiPartyId를 넣어준 것으로 보고 재해석
         if (item.targetType === "TAXI_ROOM" && roomId && !partyId) {
           console.log(
             "[NotificationScreen] TAXI_ROOM 알림에서 roomId를 partyId로 재해석",
             { roomId }
           );
           partyId = roomId; // 이 값을 taxiPartyId로 사용
-          roomId = null;    // 실제 chatRoomId는 아직 모름
+          roomId = null;   
         }
 
         console.log("[NotificationScreen] 수락 알림 클릭:", {
@@ -203,7 +198,6 @@ export default function NotificationScreen() {
           if (!roomId || !partyId) {
             const roomsResponse = await getMyChatRooms();
 
-            // 응답 형태: { matchingRooms: [...], finishedRooms: [...] }
             const allRooms = [
               ...(roomsResponse.matchingRooms || []),
               ...(roomsResponse.finishedRooms || []),
@@ -214,7 +208,7 @@ export default function NotificationScreen() {
               allRooms
             );
 
-            // (1) partyId만 있고 roomId가 없는 경우 → 같은 파티 ID 가진 방 찾기
+            // partyId만 있고 roomId가 없는 경우 -> 같은 파티 ID 가진 방 찾기
             if (partyId && !roomId) {
               const matched = allRooms.find((r) => {
                 const rPartyId = Number(
@@ -234,7 +228,7 @@ export default function NotificationScreen() {
               }
             }
 
-            // (2) roomId만 있고 partyId가 없는 경우 → 같은 채팅방 ID 가진 방에서 파티 ID 찾기
+            // roomId만 있고 partyId가 없는 경우 -> 같은 채팅방 ID 가진 방에서 파티 ID 찾기
             if (roomId && !partyId) {
               const matched = allRooms.find((r) => {
                 const rRoomId = Number(
@@ -273,7 +267,7 @@ export default function NotificationScreen() {
         break;
       }
 
-      // ✅ 정산 요청 알림 (SETTLEMENT_REQUEST)
+      // 정산 요청 알림 (SETTLEMENT_REQUEST)
       case "SETTLEMENT_REQUEST": {
         if (item.settlementId) {
           navigate("/current-pay-member", {
@@ -286,7 +280,7 @@ export default function NotificationScreen() {
         break;
       }
 
-      // ✅ 정산 재촉 알림 (SETTLEMENT_REMIND)
+      // 정산 재촉 알림 (SETTLEMENT_REMIND)
       case "SETTLEMENT_REMIND": {
         if (item.settlementId) {
           navigate("/please", {
@@ -299,10 +293,9 @@ export default function NotificationScreen() {
         break;
       }
 
-      // ✅ 후기 도착 알림 (REVIEW_ARRIVED)
+      // 후기 도착 알림 (REVIEW_ARRIVED)
       case "REVIEW_ARRIVED": {
         if (item.reviewId) {
-          // TODO: 실제 상세 페이지 라우트에 맞게 수정
           navigate(`/review/${item.reviewId}`);
         }
         break;

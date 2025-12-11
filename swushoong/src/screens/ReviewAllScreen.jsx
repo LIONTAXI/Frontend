@@ -1,5 +1,3 @@
-// src/components/ReviewScreen.js
-
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { postReview, fetchReviewableMembers } from '../api/review';
@@ -15,7 +13,6 @@ import BtnPositive from "../components/btn_positive";
 
 // props로 taxiPartyId와 revieweeId를 받아야 함
 export default function ReviewAllScreen() { 
-    //const [searchParams] = useSearchParams();
 
     const { taxiPartyId: rawTaxiPartyId, revieweeId: rawRevieweeId } = useParams();
     const navigate = useNavigate();
@@ -39,7 +36,7 @@ export default function ReviewAllScreen() { 
     const [wouldMeetAgain, setWouldMeetAgain] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // 1. 초기 데이터 로딩: 멤버 목록을 가져와 대상자를 설정
+    // 초기 데이터 로딩: 멤버 목록을 가져와 대상자를 설정
     useEffect(() => {
         const loadMembers = async () => {
             if (!taxiPartyId || isNaN(taxiPartyId) || !initialRevieweeId || isNaN(initialRevieweeId)) {
@@ -51,18 +48,6 @@ export default function ReviewAllScreen() { 
             try {
                 const partyInfo = await getTaxiPartyInfo(taxiPartyId, currentUserId);
                 
-                // --------------------------------------------------------
-                // chatRoomId 재설정 및 API 호출 로직 제거 (이동 로직을 제거했으므로 불필요)
-                /*
-                if (!chatRoomId) { 
-                    const partyInfo = await getTaxiPartyInfo(taxiPartyId, currentUserId);
-                    if (partyInfo.chatRoomId) {
-                        setChatRoomId(partyInfo.chatRoomId);
-                        console.log(`✅ chatRoomId API로 설정 완료: ${partyInfo.chatRoomId}`);
-                    }
-                }
-                */
-                // --------------------------------------------------------
 
                 // 택시팟 멤버 목록
                 const members = await fetchReviewableMembers(taxiPartyId);
@@ -121,19 +106,10 @@ export default function ReviewAllScreen() { 
                 && !isSubmitting;
     }, [selectedPositive, wouldMeetAgain, targetUser, isSubmitting]);
     
-    // ------------------- API 연동 및 데이터 변환 로직 -------------------
+   
     const handleSubmit = async () => {
         if (!isSubmitEnabled || !targetUser) return;
         setIsSubmitting(true);
-
-        // ❌ 채팅방 이동 로직과 chatRoomId 유효성 검사를 제거합니다.
-        /*
-        if (!chatRoomId) {
-            alert("채팅방 정보를 찾을 수 없어 이동할 수 없습니다. 멤버 목록으로 돌아갑니다.");
-            navigate(-1);
-            return;
-        }
-        */
         
         // 한글 라벨을 Enum Name으로 변환
         const positiveTagsEnums = convertLabelsToEnums(selectedPositive);
@@ -153,24 +129,20 @@ export default function ReviewAllScreen() { 
         };
 
         try {
-            const reviewId = await postReview(reviewPayload); // ✅ 후기 작성 API 호출 유지
-            console.log("✅ 후기 작성 성공. Review ID:", reviewId);
+            const reviewId = await postReview(reviewPayload); 
             alert(`${targetUser.name}님에게 후기 작성이 완료되었습니다.`);
 
             setSelectedPositive([]); 
         setSelectedNegative([]);
         setWouldMeetAgain(null);
             
-            // ✅ 후기 작성 완료 후, 멤버 목록으로 돌아가도록 수정
             navigate(-1); 
 
         } catch (error) {
-            console.error("❌ 후기 작성 실패:", error);
             alert(`후기 작성 실패: ${error.message}`);
         } finally {
                 setIsSubmitting(false);}
     };
-    // -----------------------------------------------------------------
 
 
     // 긍정 후기 버튼 렌더링 함수 
@@ -277,10 +249,10 @@ export default function ReviewAllScreen() { 
     return (
         <div className="relative h-screen bg-white font-pretendard flex flex-col"> 
             
-            {/* 1. 상단 헤더 */}
+            {/* 상단 헤더 */}
             <Header title="후기작성" onBack={handleBackToList} />
 
-            {/* 2. 사용자 정보 (동적으로 로드된 targetUser 사용) */}
+            {/* 사용자 정보 (동적으로 로드된 targetUser 사용) */}
             <div className="flex items-center mb-8 m-4
                             rounded border border-black-20 bg-white
                             px-3 py-4"
@@ -295,11 +267,11 @@ export default function ReviewAllScreen() { 
                 </div>
             </div>
 
-            {/* 3. 후기 선택 (긍정) */}
+            {/* 후기 선택 (긍정) */}
             <h2 className="text-head-semibold-20 text-[##000] mb-3 m-4">후기 선택</h2>
             {renderPositiveButtons()}
 
-            {/* 4. 아쉬운 점 (부정) */}
+            {/* 아쉬운 점 (부정) */}
             <div className="mb-0 m-4">
                 <button 
                     onClick={() => setShowNegative(!showNegative)}
@@ -318,10 +290,10 @@ export default function ReviewAllScreen() { 
             
             <div className="fixed bottom-10 z-10 w-[393px] left-1/2 -translate-x-1/2 flex flex-col flex-grow space-y-4 px-4">
                 
-                {/* 5. 다시 만나고 싶은 여부 */}
+                {/* 다시 만나고 싶은 여부 */}
                 {renderMeetAgainButtons()}
 
-                {/* 6. 등록 버튼 */}
+                {/* 등록 버튼 */}
                 <div className="mt-4">
                     <button 
                         onClick={handleSubmit} // API 호출 함수 연결

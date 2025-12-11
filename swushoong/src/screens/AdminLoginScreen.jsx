@@ -26,23 +26,20 @@ export default function AdminLoginScreen() {
   const handleLogin = async () => {
     if (!canLogin) return;
 
-        // 입력 ID: 'admin' (userId) + '@swu.ac.kr'
+        // 입력 ID
         const fullUserId = `${userId}@swu.ac.kr`;
 
         setIsLoading(true); 
 
         
     try {
-      // 1. API 호출: Admin 모듈의 adminLogin 함수 사용
+      // API 호출: Admin 모듈의 adminLogin 함수 사용
       const response = await adminLogin(fullUserId, password);
 
-      // 2. 응답 처리
+      // 응답 처리
       if (response && response.success === true && response.role === "ADMIN") {
         console.log("로그인 성공 (API 인증)");
         setLoginError(false);
-        // TODO: 원래는 로그인 성공 시, 백엔드에서 받은 토큰이나 세션 정보를 저장해야 함
-        // 만약 서버가 JWT를 반환한다면, 이곳에서 저장하고 모든 후속 요청에 사용해야 함
-        // 근데 관리자 페이지는 예외 
 
         navigate('/admin-home'); 
       } else {
@@ -54,7 +51,7 @@ export default function AdminLoginScreen() {
       console.error("로그인 API 호출 오류:", error);
       setLoginError(true);
     } finally {
-      setIsLoading(false); // 로딩 종료
+      setIsLoading(false);
     }
   };
 
@@ -62,7 +59,7 @@ export default function AdminLoginScreen() {
     <div className="min-h-screen bg-white font-pretendard flex flex-col">
       <div className="flex-1 flex flex-col px-4 pt-12 pb-4">
       <div className="flex items-start justify-between">
-        {/* ===== 로고 ===== */}
+        {/* 로고 */}
         <img
           src={LogoAdmin}
           alt="logo"
@@ -72,7 +69,7 @@ export default function AdminLoginScreen() {
 
       {/* ===== 메인 입력 영역 ===== */}
       <div className="mt-10 w-full max-w-[361px] mx-auto flex flex-col gap-6">
-        {/* --- 아이디 영역 --- */}
+        {/* 아이디 영역  */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <p className="text-head-semibold-20 text-black-90">관리자 로그인</p>
@@ -81,7 +78,7 @@ export default function AdminLoginScreen() {
             </p>
           </div>
 
-          {/* 아이디 인풋 + @swu.ac.kr */}
+          {/* 아이디 인풋 */}
           <div className="w-full h-12 bg-black-10 rounded-[4px] px-4 flex items-center justify-between">
             <input
               type="text"
@@ -96,7 +93,7 @@ export default function AdminLoginScreen() {
           </div>
         </div>
 
-        {/* --- 비밀번호 영역 --- */}
+        {/* 비밀번호 영역 */}
         <div className="flex flex-col gap-4">
           <p className="text-head-semibold-20 text-black-90">비밀번호</p>
 
@@ -117,7 +114,7 @@ export default function AdminLoginScreen() {
             >
             </button>
           </div>
-          {/* ===== 로그인 실패 문구 ===== */}
+          {/* 로그인 실패 문구 */}
           {loginError && (
             <p className="mt-1 text-body-regular-14 text-oryu">
                 *아이디 또는 비밀번호를 다시 확인해주세요
@@ -126,7 +123,7 @@ export default function AdminLoginScreen() {
         </div>
       </div>
 
-      {/* ===== 로그인 버튼 (비활성) ===== */}
+      {/* 로그인 버튼 (비활성) */}
       <div className="mt-auto pb-2">
         <BtnLong 
           label="로그인" 

@@ -1,4 +1,3 @@
-// src/screens/JoinScreen2.jsx
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";

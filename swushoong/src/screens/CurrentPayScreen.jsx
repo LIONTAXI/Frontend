@@ -1,20 +1,16 @@
-// 정산 현황 페이지 (방장-총대슈니용)
-
 import React,{useState, useEffect, useCallback} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import IconNotify from "../assets/img/chat_notify.svg";
 import { getSettlementDetails, markParticipantPaid, remindSettlement } from "../api/settlements";
-// 현재 로그인 유저 ID를 가져오는 함수
 import { getCurrentUserId } from "../api/token";
 
-// 금액을 천 단위 콤마와 '원' 단위로 포맷팅하는 함수
 const formatCurrency = (amount) => {
     if (typeof amount !== 'number' || isNaN(amount) || amount === null) return '0';
     return `${amount.toLocaleString()}`;
 };
 
-// 2시간을 밀리초로 설정 (2시간 * 60분 * 60초 * 1000ms)
+// 2시간을 밀리초로 설정 
 const COOL_DOWN_MS = 2 * 60 * 60 * 1000; 
 const REMIND_COOL_DOWN = COOL_DOWN_MS;
 
@@ -34,12 +30,11 @@ export default function CurrentPayScreen() {
     
     // 실제 ID를 가져옵니다.
     const currentUserId = getCurrentUserId();
-    console.log("현재 로그인 사용자 ID:", currentUserId); // 🚨 ID 확인용 
     
     const stateSettlementId = location.state?.settlementId || '';
     const settlementId = stateSettlementId || localStorage.getItem("currentSettlementId");
 
-    // API 연결: 정산 상세 정보 불러오기
+    // 정산 상세 정보 불러오기
     const loadSettlementDetails = useCallback(async () => {
         setIsLoading(true);
         setError(null);
@@ -47,20 +42,18 @@ export default function CurrentPayScreen() {
         const idToFetch = parseInt(settlementId, 10);
 
         if (isNaN(idToFetch) || idToFetch <= 0) {
-            // settlementId가 null, undefined, 빈 문자열이거나 유효하지 않은 숫자일 경우 에러 처리
-            setError("❌ 정산 ID를 찾을 수 없습니다. (ID가 유효하지 않거나 0 이하)");
-            setIsLoading(false);
-            return;
-        }
+
+         setError("정산 ID를 찾을 수 없습니다. (ID가 유효하지 않거나 0 이하)");
+         setIsLoading(false);
+         return;
+         }
 
         try {
-            // API 호출: 정산 상세 조회 (GET /api/settlements/{settlementId})
-            // 🚨 수정: 변환된 정수형 ID (idToFetch)를 사용
+            // 정산 상세 조회
             const data = await getSettlementDetails(idToFetch); 
             setSettlementData(data);
         } catch (err) {
             const errorMessage = err.response?.message || "정산 현황을 불러오는 데 실패했습니다.";
-            console.error("❌ 정산 상세 조회 실패:", errorMessage, err);
             setError(errorMessage);
         } finally {
             setIsLoading(false);
@@ -80,23 +73,21 @@ export default function CurrentPayScreen() {
                 const remainingTime = REMIND_COOL_DOWN - elapsedTime;
                 setTimeout(() => {
                     setIsDisabled(false);
-                    console.log("⏰ 쿨타임 종료. 다시 조르기 가능.");
                 }, remainingTime);
             }
         }
     }, [loadSettlementDetails, settlementId]);
 
 
-    // API 연결: 정산 재촉 API 호출
+    // 정산 재촉 API 호출
     const handleRemindClick = async () => {
         if (isDisabled || !settlementData) return;
         
         setIsDisabled(true); // 쿨타임 시작 (버튼 비활성화)
         
         try {
-            // API 호출: 정산 재촉 (POST /api/settlements/{settlementId}/remind)
+            // 정산 재촉
             await remindSettlement(settlementData.settlementId);
-            console.log("✅ 정산 재촉 성공");
             
             // 쿨타임 기록 및 툴팁 표시
             localStorage.setItem(`lastRemindTime_${settlementData.settlementId}`, Date.now().toString());
@@ -111,27 +102,23 @@ export default function CurrentPayScreen() {
             
         } catch (err) {
             const errorMessage = err.response?.message || "정산 조르기에 실패했습니다.";
-            console.error("❌ 정산 조르기 실패:", errorMessage, err);
-            //alert(`정산 조르기에 실패했습니다: ${errorMessage}`);
             setIsDisabled(true); // 실패 시 버튼 재활성화
         }
     };
     
-    // API 연결: 정산 완료 처리 핸들러 (총대만 가능)
+    // 정산 완료 처리 핸들러 (총대만 가능)
     const handleMarkPaid = async (targetUserId) => {
         if (!settlementData) return;
         
         if (window.confirm(`${targetUserId}번 유저의 정산을 완료 처리하시겠습니까?`)) {
             try {
-                // API 호출: 참여자 정산 완료 처리 (POST /api/settlements/{settlementId}/participants/{userId}/pay)
+                // 참여자 정산 완료 처리 
                 await markParticipantPaid(settlementData.settlementId, targetUserId);
-                console.log(`✅ ${targetUserId}번 유저 정산 완료 처리 성공`);
                 
                 // 성공 후 정산 목록 갱신
                 loadSettlementDetails(); 
             } catch (err) {
                 const errorMessage = err.response?.message || "정산 완료 처리에 실패했습니다.";
-                console.error("❌ 정산 완료 처리 실패:", errorMessage, err);
                 alert(`정산 완료 처리에 실패했습니다: ${errorMessage}`);
             }
         }
@@ -175,11 +162,10 @@ export default function CurrentPayScreen() {
         if (chatRoomId && partyId) {
             const isAllSettled = !hasPendingMembers;
 
-            // 채팅 페이지 경로: /chat/:chatRoomId/:partyId
+            // 채팅 페이지 경로
             navigate(`/chat/${chatRoomId}/${partyId}`, { 
                 replace: true,
                 state: { 
-                    // ChatScreen으로 isSettled 상태를 전달
                     isSettled: isAllSettled
                 }
             });
@@ -258,7 +244,7 @@ export default function CurrentPayScreen() {
                                     {formatCurrency(member.amount)}원
                                 </span>
 
-                                {/* 정산 상태 버튼 (총대가 아니거나 이미 완료된 경우 버튼 비활성화 */}
+                                {/* 정산 상태 버튼, 총대가 아니거나 이미 완료된 경우 버튼 비활성화 */}
                                 {member.isMe ? (
                                     <div className="w-[88px] h-8"></div> // 총대 본인은 버튼 없음
                                 ) : (

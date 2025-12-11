@@ -1,4 +1,3 @@
-// src/screens/VerifyResultScreen.jsx
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -11,7 +10,6 @@ export default function VerifyResultScreen() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // JoinScreen3 → navigate("/verify-result", { state: { success: true/false } });
   const isSuccess = location.state?.success ?? true;
 
   const iconSrc = isSuccess ? SuccessIcon : FailedIcon;
@@ -24,10 +22,10 @@ export default function VerifyResultScreen() {
 
   const handlePrimary = () => {
     if (isSuccess) {
-      // ✅ 인증 성공 → 로그인 화면으로
+      // 인증 성공 -> 로그인 화면으로
       navigate("/");
     } else {
-      // ❌ 인증 실패 → 수동 인증 화면으로
+      // 인증 실패 -> 수동 인증 화면으로
       navigate("/manual-verify");
     }
   };

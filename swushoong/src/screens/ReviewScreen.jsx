@@ -53,7 +53,7 @@ export default function ReviewScreen() {
             setIsLoading(true);
             const data = await getUserReviewSummary(targetUserId);
 
-            // API 응답 데이터 가공 및 태그 매핑
+          
             const transformedData = {
                 nickname: data.name || "알 수 없음", 
                 shortStudentId: data.shortStudentId || '?',
@@ -159,7 +159,7 @@ export default function ReviewScreen() {
 
     return (
         <div className="relative h-screen bg-white font-pretendard flex flex-col">
-            {/* 1. 상단 헤더 */}
+            {/* 상단 헤더 */}
             <Header
                 title="프로필" 
                 onBack={handleBackToList} 
@@ -168,7 +168,7 @@ export default function ReviewScreen() {
             />
 
             <main className="flex-grow p-4">
-                {/* 2. 프로필 정보 섹션 */}
+                {/* 프로필 정보 섹션 */}
                 <div className="flex items-center mb-6">
                     {/* 프로필 이미지 */}
                     <div className="w-16 h-16 bg-black-20 rounded-full mr-4"></div> 
@@ -192,7 +192,7 @@ export default function ReviewScreen() {
                     </div>
                 </div>
 
-                {/* 3. 받은 매너 평가 섹션 */}
+                {/* 받은 매너 평가 섹션 */}
                 <h2 className="text-head-semibold-20 text-[#000] my-4">받은 매너 평가</h2>
                 <div className="flex flex-wrap">
                     {profileData.positiveReviews.length > 0 ? (
@@ -211,7 +211,7 @@ export default function ReviewScreen() {
                     )}
                 </div>
 
-                {/* 4. 받은 비매너 평가 섹션 */}
+                {/* 받은 비매너 평가 섹션 */}
                 <h2 className="text-head-semibold-20 text-[#000] my-4 mt-14">받은 비매너 평가</h2>
                 <div className="flex flex-wrap">
                     {profileData.negativeReviews.length > 0 ? (

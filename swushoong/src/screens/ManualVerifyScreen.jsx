@@ -1,4 +1,3 @@
-// src/screens/ManualVerifyScreen.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -31,7 +30,6 @@ export default function ManualVerifyScreen() {
 
     console.log("수동 인증 제출:", { name, studentId, selectedImage });
 
-    // TODO: 수동 인증 API 연동 후 성공/실패 결과에 따라 status 값 조정
     navigate("/verify-result", {
       state: { status: "success", method: "manual" },
     });
@@ -66,8 +64,8 @@ export default function ManualVerifyScreen() {
                 cursor-pointer overflow-hidden
                 ${
                     previewUrl
-                    ? "bg-white border border-black-20"   // 이미지 선택 시: 흰 배경 + 테두리
-                    : "bg-black-10 border border-transparent" // 미선택 시: 회색 박스, 테두리 없음
+                    ? "bg-white border border-black-20"  
+                    : "bg-black-10 border border-transparent" 
                 }`}
             >
               {previewUrl ? (

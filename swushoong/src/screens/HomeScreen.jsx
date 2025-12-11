@@ -1,5 +1,4 @@
-// src/screens/HomeScreen.jsx
-import React, { useState, useEffect, useRef } from "react"; // ★ useRef 추가
+import React, { useState, useEffect, useRef } from "react"; 
 import { useNavigate } from "react-router-dom";
 import TabBar from "../components/TabBar";
 import TaxiPotCard from "../components/TaxiPotCard";
@@ -23,7 +22,7 @@ export default function HomeScreen() {
   const navigate = useNavigate();
 
   const [hasNotification, setHasNotification] = useState(false);
-  const [viewMode, setViewMode] = useState("compact"); // compact | expanded
+  const [viewMode, setViewMode] = useState("compact");
 
   // 헤더에 표시할 위치 문구
   const [stationLabel, setStationLabel] = useState("내 위치 불러오는 중...");
@@ -32,7 +31,7 @@ export default function HomeScreen() {
 
   // 택시팟 목록
   const [taxiPots, setTaxiPots] = useState([]);
-  const [selectedPotId, setSelectedPotId] = useState(null); // ★ 기본값 그대로(초기 선택 없음)
+  const [selectedPotId, setSelectedPotId] = useState(null);
 
   // 지도에 찍을 총대 마커
   const [hostMarkers, setHostMarkers] = useState([]);
@@ -41,13 +40,12 @@ export default function HomeScreen() {
   const rawUserId = localStorage.getItem("userId");
   const USER_ID = rawUserId ? Number(rawUserId) : null;
 
-  // ★ 선택된 카드로 스크롤하기 위한 ref들
+  // 선택된 카드로 스크롤하기 위한 ref들
   const listContainerRef = useRef(null);
   const cardRefs = useRef({}); // pot.id -> HTMLElement
 
-  /* ======================
-   *  0) 미확인 알림 개수 조회
-   * ====================== */
+  
+  //  미확인 알림 개수 조회
   useEffect(() => {
     if (!USER_ID) return;
 
@@ -71,9 +69,8 @@ export default function HomeScreen() {
     };
   }, [USER_ID]);
 
-  /* ======================
-   *  1) 내 위치 추적
-   * ====================== */
+ 
+   // 내 위치 추적
   useEffect(() => {
     if (!("geolocation" in navigator)) {
       setStationLabel("위치 서비스 미지원");
@@ -111,13 +108,13 @@ export default function HomeScreen() {
     };
   }, []);
 
-  /* ======================
-   *  2) 택시팟 + 현재 접속 유저 + 각 택시팟 상세
-   * ====================== */
+
+   // 택시팟 + 현재 접속 유저 + 각 택시팟 상세
+
   useEffect(() => {
     async function fetchData() {
       try {
-        // 1차: 목록 & 현재 접속 유저
+        // 목록 & 현재 접속 유저
         const [potsRes, usersRes] = await Promise.all([
           getTaxiPotList(),
           getCurrentUsers(),
@@ -126,7 +123,7 @@ export default function HomeScreen() {
         const pots = Array.isArray(potsRes) ? potsRes : [];
         const users = Array.isArray(usersRes) ? usersRes : [];
 
-        // 2차: 각 택시팟 상세 정보 가져와서 hostId / 좌표 채우기
+        // 각 택시팟 상세 정보 가져와서 hostId / 좌표 채우기
         const detailList = await Promise.all(
           pots.map((p) =>
             getTaxiPotDetail(p.id).catch((err) => {
@@ -196,7 +193,7 @@ export default function HomeScreen() {
             let lng = null;
             let emoji = pot.emoji;
 
-            // (1) hostId와 /api/map 유저가 매칭되면, 그 위치 + markerEmoji 사용
+            // hostId와 /api/map 유저가 매칭되면, 그 위치 + markerEmoji 사용
             if (pot.hostId != null) {
               const u = users.find((user) => {
                 const uid = user.userId ?? user.id ?? user.user?.id;
@@ -209,7 +206,7 @@ export default function HomeScreen() {
               }
             }
 
-            // (2) 그래도 없으면, 택시팟에 저장된 좌표 사용
+            // 그래도 없으면, 택시팟에 저장된 좌표 사용
             if (lat == null || lng == null) {
               if (pot.latitude != null && pot.longitude != null) {
                 lat = pot.latitude;
@@ -234,12 +231,6 @@ export default function HomeScreen() {
 
         setTaxiPots(mappedPots);
         setHostMarkers(markers);
-
-        // ★ 초기 자동 선택을 없앱니다 (요청사항)
-        // 이전 코드:
-        // if (markers.length > 0) setSelectedPotId(markers[0].id);
-        // else if (mappedPots.length > 0) setSelectedPotId(mappedPots[0].id);
-        // else setSelectedPotId(null);
         setSelectedPotId(null);
       } catch (err) {
         console.error(
@@ -252,9 +243,9 @@ export default function HomeScreen() {
     fetchData();
   }, [USER_ID]);
 
-  /* ======================
-   *  2-1) 선택된 카드로 스크롤
-   * ====================== */
+ 
+   // 선택된 카드로 스크롤
+
   useEffect(() => {
     if (!selectedPotId) return;
     const el = cardRefs.current[selectedPotId];
@@ -268,9 +259,7 @@ export default function HomeScreen() {
     }
   }, [selectedPotId, viewMode]);
 
-  /* ======================
-   *  3) UI 핸들러들
-   * ====================== */
+   // UI 핸들러들
   const toggleViewMode = () => {
     setViewMode((prev) => (prev === "compact" ? "expanded" : "compact"));
   };
@@ -284,7 +273,6 @@ export default function HomeScreen() {
   };
 
   const handleClickCard = (pot) => {
-    // ★ 카드 클릭 시 더 이상 선택 상태를 변경하지 않습니다 (요청사항)
     const isOwner = typeof pot.isOwner === "boolean" ? pot.isOwner : false;
 
     navigate("/taxi-detail", {
@@ -299,7 +287,7 @@ export default function HomeScreen() {
   const isHostMe = taxiPots.some((pot) => pot.isOwner === true);
 
   const handleSelectTaxiPotFromMap = (partyId) => {
-    // ★ 같은 마커 재클릭 시 선택 해제(토글)
+    // 같은 마커 재클릭 시 선택 해제
     setSelectedPotId((prev) => (prev === partyId ? null : partyId));
   };
 
@@ -313,9 +301,6 @@ export default function HomeScreen() {
     }
   };
 
-  /* ======================
-   *  render
-   * ====================== */
   return (
     <div className="w-[393px] h-screen bg-white font-pretendard flex flex-col relative mx-auto overflow-hidden">
       {/* ===== 상단 헤더 ===== */}
@@ -350,7 +335,7 @@ export default function HomeScreen() {
           userLocation={userLocation}
           taxiHosts={hostMarkers}
           selectedTaxiPotId={selectedPotId}
-          onSelectTaxiPot={handleSelectTaxiPotFromMap} // ★ 토글 선택
+          onSelectTaxiPot={handleSelectTaxiPotFromMap}
           onAddressChange={setStationLabel}
           isHostMe={isHostMe}
         />
@@ -376,7 +361,7 @@ export default function HomeScreen() {
         </div>
 
         <div
-          ref={listContainerRef} // ★ 스크롤 컨테이너 ref
+          ref={listContainerRef} 
           className={
             viewMode === "compact"
               ? "flex flex-row gap-2 overflow-x-auto pb-1 no-scrollbar"
@@ -387,7 +372,7 @@ export default function HomeScreen() {
             <div
               key={pot.id}
               ref={(el) => {
-                if (el) cardRefs.current[pot.id] = el; // ★ 각 카드 요소 ref 저장
+                if (el) cardRefs.current[pot.id] = el; 
               }}
               className={viewMode === "compact" ? "shrink-0" : ""}
             >
@@ -402,7 +387,7 @@ export default function HomeScreen() {
                 highlighted={selectedPotId === pot.id}
                 variant={viewMode === "compact" ? "small" : "big"}
                 fullWidth={viewMode === "expanded"}
-                onClick={() => handleClickCard(pot)} // ★ 선택 변경 없음, 네비게이션만
+                onClick={() => handleClickCard(pot)}
               />
             </div>
           ))}
