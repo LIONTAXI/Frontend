@@ -129,9 +129,15 @@ export default function ChatScreen() {
     const handleCloseMenu = () => { setIsMenuOpen(false); };
 
     const navigateToMemberList = () => {
-        handleCloseMenu();
-        navigate(`/member-list/${partyId}`); 
-    };
+    handleCloseMenu();
+    // [핵심 수정]: partyId는 URL에 있지만, chatRoomId를 state로 전달
+    navigate(`/member-list/${partyId}`, {
+        state: { 
+            chatRoomId: chatRoomId, // ✅ chatRoomId 전달
+            partyId: partyId // partyId도 명시적으로 전달 (선택 사항이지만 일관성을 위해 유지)
+        }
+    }); 
+};
 
     // '택시팟 끝내기' 메뉴 항목 클릭 핸들러 (최종 종료 API 호출)
     const handleCloseChatRoom = async () => {

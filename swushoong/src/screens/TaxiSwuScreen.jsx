@@ -7,7 +7,7 @@ import Header from "../components/Header";
 import { getPartyMembersWithReviewStatus } from '../api/review';
 import { getCurrentUserId } from '../api/token';
 
-export default function TaxiSwuScreen() {
+export default function TaxiSwuScreen({chatRoomId}) {
     const { partyId } = useParams();
     const currentUserId = getCurrentUserId(); // 토큰에서 사용자 ID를 가져옴
     const taxiPartyId = parseInt(partyId, 10);
@@ -79,22 +79,34 @@ export default function TaxiSwuScreen() {
 
 
         if (!member.isMe) {
-            // member.userId는 후기 대상 (revieweeId)
-            navigate(`/review-all/${taxiPartyId}/${member.userId}`);
-        }
+            console.log("--- 동승자 후기 작성 시도 ---");
+            console.log(`Prop으로 받은 chatRoomId: ${chatRoomId}`);
+            navigate(`/review-all/${taxiPartyId}/${member.userId}`, {
+                // ✅ chatRoomId와 partyId를 state로 전달
+                state: { chatRoomId: chatRoomId, partyId: taxiPartyId } 
+            });
+        }
     };
 
     const handleProfileClick = (memberId) => {
-        console.log(`프로필 클릭: 사용자 ID ${memberId}`);
-        // 프로필 화면 경로로 이동????? 경로를 /member-profile/:userId 
-        navigate(`/member-profile/${memberId}`);
-    };
+        console.log(`프로필 클릭: 사용자 ID ${memberId}`);
+        // 프로필 화면 경로: /member-profile/:userId
+        navigate(`/member-profile/${memberId}`, {
+            // ✅ chatRoomId와 partyId를 state로 전달
+            state: { chatRoomId: chatRoomId, partyId: taxiPartyId }
+        });
+    };
 
+    const handleBackToChat = () => {
+        // navigate(-1)는 브라우저 기록에서 바로 이전 페이지로 돌아갑니다.
+        // 이 경우 'TaxiMemberScreen' 직전 페이지인 'ChatScreen'이 됩니다.
+        navigate(-1);
+    };
 
 
     return (
         <div className="h-full h-screen bg-white font-pretendard flex flex-col"> 
-            <Header title="택시팟 멤버" />
+            <Header title="택시팟 멤버" onBack={handleBackToChat} />
 
             <div className="bg-white flex flex-col flex-grow w-full space-y-4 px-4">
                 <h1 className="text-head-semibold-20 text-[#000] mt-2">
