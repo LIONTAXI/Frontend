@@ -78,7 +78,7 @@ export function getSettlementDetails(settlementId) {
     method: "GET",
     headers: getAuthHeader(),
   });
-}회
+}
 
 
 // 참여자 목록
